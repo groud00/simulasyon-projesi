@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="sir_page_title">Plague Modeli: Gelişmiş Salgın Simülasyonu</title>
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: #141923;
+            --text: #e1e6f0;
+            --text-muted: #94a3b8;
+            --border: #222b3b;
+            
+            --susceptible: #4da6ff; 
+            --infected: #ff4d4d;    
+            --recovered: #2ecc71;   
+            --dead: #7f8c8d;        
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Yuvarlak Geri Dön / Ana Ekran Butonu */
+        .home-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1000;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(20, 25, 35, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .home-btn:hover {
+            background: rgba(30, 41, 59, 0.95);
+            transform: scale(1.05);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .home-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal Onay Penceresi */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #141923;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 28px 24px 24px 24px;
+            width: 88%;
+            max-width: 340px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            transform: scale(0.92);
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.2px;
+        }
+
+        .modal-desc {
+            font-size: 13.5px;
+            color: #94a3b8;
+            margin: 0 0 24px 0;
+            line-height: 1.4;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn-cancel {
+            background: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .modal-btn-cancel:hover {
+            background: #334155;
+        }
+
+        .modal-btn-cancel:active {
+            transform: scale(0.96);
+        }
+
+        .modal-btn-confirm {
+            background: var(--infected);
+            color: #ffffff;
+        }
+
+        .modal-btn-confirm:hover {
+            background: #e63939;
+        }
+
+        .modal-btn-confirm:active {
+            transform: scale(0.96);
+        }
+
+        .wrapper {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        h2 { 
+            font-size: 1.15rem; 
+            color: var(--infected); 
+            margin: 0; 
+            text-align: center; 
+            letter-spacing: 1px; 
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(255, 77, 77, 0.3);
+        }
+        #panel {
+            background-color: var(--panel-bg);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+        }
+        .control-group { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 4px; 
+        }
+        label { 
+            font-size: 0.85rem; 
+            color: var(--text-muted); 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+        }
+        input[type="range"] { 
+            width: 100%; 
+            accent-color: var(--infected); 
+            height: 24px; 
+            cursor: pointer;
+        }
+        button.action-btn {
+            background-color: #1a2233;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            width: 100%;
+            outline: none;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+        button.action-btn:active { background-color: var(--infected); color: #fff; transform: translateY(1px); }
+        
+        .canvas-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            background-color: var(--panel-bg);
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+        }
+        canvas {
+            background-color: #000;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            width: 100%;
+            height: auto;
+        }
+        #simCanvas { aspect-ratio: 3 / 2; }
+        #screenCanvas { aspect-ratio: 4 / 1; width: 100%; } 
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            width: 100%;
+        }
+        .stat-box {
+            background-color: #1a2233;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .stat-box span {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        #stat-s { color: var(--susceptible); }
+        #stat-i { color: var(--infected); text-shadow: 0 0 5px rgba(255, 77, 77, 0.4); }
+        #stat-r { color: var(--recovered); }
+        #stat-d { color: var(--dead); }
+
+        .time-box {
+            width: 100%;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #fff;
+            background: #1a2233;
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-weight: bold;
+        }
+
+        .info-panel {
+            background: var(--panel-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+        }
+        .info-panel h3 {
+            margin: 0;
+            font-size: 0.95rem;
+            color: var(--text);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 6px;
+        }
+        .info-item {
+            font-size: 0.78rem;
+            line-height: 1.4;
+            color: var(--text-muted);
+        }
+        .info-item strong {
+            color: #fff;
+            display: inline;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Yuvarlak Ok Iconlu Ana Ekrana Dön Butonu -->
+    <button class="home-btn" id="btnHome" aria-label="Ana Ekrana Dön" data-i18n-aria-label="sir_back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+    </button>
+
+    <!-- Modal Onay Penceresi -->
+    <div class="modal-overlay" id="homeModal">
+        <div class="modal-card">
+            <h3 class="modal-title" data-i18n="sir_modal_title">Ana Ekrana Dön</h3>
+            <p class="modal-desc" data-i18n="sir_modal_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" id="btnModalCancel" data-i18n="sir_cancel">İptal</button>
+                <button class="modal-btn modal-btn-confirm" id="btnModalConfirm" data-i18n="sir_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="wrapper">
+        <h2 data-i18n="sir_title">Dünya Çapında Salgın Simülatörü</h2>
+        
+        <div id="panel">
+            <div class="control-group">
+                <label><span data-i18n="sir_transmission">Temas Başına Bulaşma Riski:</span> <span id="val-transmission">25%</span></label>
+                <input type="range" id="param-transmission" min="1" max="100" value="25">
+            </div>
+
+            <div class="control-group">
+                <label><span data-i18n="sir_isolation">Karantina / İzolasyon Oranı:</span> <span id="val-isolation">60%</span></label>
+                <input type="range" id="param-isolation" min="0" max="100" value="60">
+            </div>
+
+            <div class="control-group">
+                <label><span data-i18n="sir_recovery">Ort. Hastalık Süresi:</span> <span id="val-recovery">20 Gün</span></label>
+                <input type="range" id="param-recovery" min="5" max="100" value="20" step="1">
+            </div>
+
+            <div class="control-group">
+                <label><span data-i18n="sir_death">Ölümcüllük Oranı (Fatalite):</span> <span id="val-death">10%</span></label>
+                <input type="range" id="param-death" min="0" max="100" value="10">
+            </div>
+            
+            <div class="control-group">
+                <label><span data-i18n="sir_speed">Bireysel Hareket Kabiliyeti:</span> <span id="val-speed">Normal</span></label>
+                <input type="range" id="param-speed" min="0.2" max="3" value="1.2" step="0.1">
+            </div>
+
+            <button class="action-btn" id="resetBtn" data-i18n="sir_start">Yeni Salgın Başlat (1000 Kişi)</button>
+        </div>
+
+        <div class="canvas-box">
+            <div class="time-box"><span data-i18n="sir_elapsed">Geçen Süre:</span> <span id="dayCount">0</span>. <span data-i18n="sir_day">Gün</span></div>
+            
+            <canvas id="simCanvas" width="600" height="400"></canvas>
+            <canvas id="screenCanvas" width="600" height="150"></canvas>
+            
+            <div class="stats-grid">
+                <div class="stat-box"><span data-i18n="sir_healthy">Sağlıklı</span> <span id="stat-s">0</span></div>
+                <div class="stat-box"><span data-i18n="sir_infected">Enfekte</span> <span id="stat-i">0</span></div>
+                <div class="stat-box"><span data-i18n="sir_recovered">İyileşen</span> <span id="stat-r">0</span></div>
+                <div class="stat-box"><span data-i18n="sir_dead">Ölü</span> <span id="stat-d">0</span></div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h3 data-i18n="sir_guide_title">🔬 Ajan Tabanlı Epidemiyoloji Rehberi</h3>
+            <div class="info-item">
+                <div data-i18n="sir_isolation_info"><strong>🏠 Gerçekçi İzolasyon:</strong> Hastalanan bireyler seçilen izolasyon oranına göre evde kalır ve virüsü başkalarına bulaştırmayı durdurur.</div>
+            </div>
+            <div class="info-item">
+                <div data-i18n="sir_transmission_info"><strong>🎯 Temas Riski:</strong> Yakın temas sırasında virüs kapma ihtimali, yukarıdaki temas riskinin temas süresine uyarlanmasıyla hesaplanır. Bu, klasik homojen SIR değil, hareketli ajan modelidir.</div>
+            </div>
+            <div class="info-item">
+                <div data-i18n="sir_healthy_info"><strong style="color:var(--susceptible)">■ Sağlıklı (Mavi):</strong> Virüs kapabilecek risk altındaki bireyler.</div>
+            </div>
+            <div class="info-item">
+                <div data-i18n="sir_infected_info"><strong style="color:var(--infected)">■ Enfekte (Kırmızı):</strong> Hastalığı taşıyan ve etrafa bulaştırabilenler.</div>
+            </div>
+            <div class="info-item">
+                <div data-i18n="sir_recovered_info"><strong style="color:var(--recovered)">■ İyileşen (Yeşil):</strong> Hastalığı yenen ve bağışıklık kazanan bireyler.</div>
+            </div>
+            <div class="info-item">
+                <div data-i18n="sir_dead_info"><strong style="color:var(--dead)">■ Ölü (Gri):</strong> Virüse yenik düşüp simülasyondan ayrılanlar.</div>
+            </div>
+            <div class="info-item">
+                <div data-i18n="sir_scale_info"><strong>📏 Ölçek:</strong> Alan yaklaşık 6 km genişliğindedir; temas mesafesi 20 metre olarak modellenir.</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="lang.js"></script>
+    <script>
+        // --- ANA EKRANA DÖN & MODAL MANTIĞI ---
+        const btnHome = document.getElementById('btnHome');
+        const homeModal = document.getElementById('homeModal');
+        const btnModalCancel = document.getElementById('btnModalCancel');
+        const btnModalConfirm = document.getElementById('btnModalConfirm');
+
+        btnHome.addEventListener('click', () => {
+            homeModal.classList.add('active');
+        });
+
+        btnModalCancel.addEventListener('click', () => {
+            homeModal.classList.remove('active');
+        });
+
+        homeModal.addEventListener('click', (e) => {
+            if (e.target === homeModal) {
+                homeModal.classList.remove('active');
+            }
+        });
+
+        btnModalConfirm.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        // --- SİMÜLASYON KURULUMU VE MANTIĞI ---
+        const simCanvas = document.getElementById('simCanvas');
+        const simCtx = simCanvas.getContext('2d');
+        const screenCanvas = document.getElementById('screenCanvas');
+        const screenCtx = screenCanvas.getContext('2d');
+
+        const paramTrans = document.getElementById('param-transmission');
+        const paramIso = document.getElementById('param-isolation');
+        const paramRecov = document.getElementById('param-recovery');
+        const paramDeath = document.getElementById('param-death');
+        const paramSpeed = document.getElementById('param-speed');
+        const resetBtn = document.getElementById('resetBtn');
+
+        const statS = document.getElementById('stat-s');
+        const statI = document.getElementById('stat-i');
+        const statR = document.getElementById('stat-r');
+        const statD = document.getElementById('stat-d');
+        const dayCount = document.getElementById('dayCount');
+
+        const COLORS = {
+            S: '#4da6ff', 
+            I: '#ff4d4d', 
+            R: '#2ecc71', 
+            D: '#7f8c8d'  
+        };
+
+        let particles = [];
+        const POPULATION = 1000; 
+        const PARTICLE_RADIUS = 2; 
+        const SECONDS_PER_DAY = 1.0;
+        const WORLD_WIDTH_KM = 6;
+        const CONTACT_DISTANCE_KM = 0.02;
+        
+        let days = 0;
+        let dayAccumulator = 0;
+        let historyData = []; 
+        let simulationActive = true;
+        let animId;
+        let lastTime = 0;
+
+        const HUBS = [
+            {x: 120, y: 100},
+            {x: 480, y: 100},
+            {x: 120, y: 300},
+            {x: 480, y: 300},
+            {x: 300, y: 200} 
+        ];
+
+        function getRecoveryDays() {
+            const baseValue = parseInt(paramRecov.value);
+            const minDays = Math.max(3, Math.round(baseValue * 0.6));
+            const maxDays = Math.round(baseValue * 1.4);
+            return Math.floor(Math.random() * (maxDays - minDays + 1)) + minDays;
+        }
+
+        class Particle {
+            constructor(id, state, x, y, speedMult) {
+                this.id = id;
+                this.state = state; 
+                
+                this.homeX = x;
+                this.homeY = y;
+                this.x = x;
+                this.y = y;
+                this.previousX = x;
+                this.previousY = y;
+                
+                this.myHub = HUBS[Math.floor(Math.random() * HUBS.length)];
+                
+                const rand = Math.random();
+                if (rand < 0.15) this.profile = 'evcimen';
+                else if (rand < 0.80) this.profile = 'rutin';
+                else this.profile = 'gezgin';
+                
+                this.personalSpeed = 0.5 + Math.random() * 1.5;
+                this.moveState = 'bekliyor';
+                this.idleTimer = Math.random() * 100;
+                
+                this.targetX = x;
+                this.targetY = y;
+                this.isAtHome = true;
+                this.isIsolated = false;
+
+                this.infectionDays = 0; 
+                this.recoveryTarget = 0; 
+            }
+
+            pickDestination() {
+                if (this.isIsolated) {
+                    this.targetX = this.homeX;
+                    this.targetY = this.homeY;
+                    this.isAtHome = true;
+                    return;
+                }
+
+                if (this.profile === 'rutin') {
+                    if (this.isAtHome) {
+                        this.targetX = this.myHub.x + (Math.random() - 0.5) * 50;
+                        this.targetY = this.myHub.y + (Math.random() - 0.5) * 50;
+                        this.isAtHome = false;
+                    } else {
+                        this.targetX = this.homeX;
+                        this.targetY = this.homeY;
+                        this.isAtHome = true;
+                    }
+                } else if (this.profile === 'gezgin') {
+                    this.targetX = Math.random() * simCanvas.width;
+                    this.targetY = Math.random() * simCanvas.height;
+                } else {
+                    if (Math.random() < 0.85) {
+                        this.targetX = this.homeX;
+                        this.targetY = this.homeY;
+                    } else {
+                        this.targetX = this.homeX + (Math.random() - 0.5) * 40;
+                        this.targetY = this.homeY + (Math.random() - 0.5) * 40;
+                    }
+                }
+
+                this.targetX = Math.max(PARTICLE_RADIUS, Math.min(simCanvas.width - PARTICLE_RADIUS, this.targetX));
+                this.targetY = Math.max(PARTICLE_RADIUS, Math.min(simCanvas.height - PARTICLE_RADIUS, this.targetY));
+            }
+
+            update(globalSpeedMult, dtFactor) {
+                if (this.state === 'D') return;
+
+                this.previousX = this.x;
+                this.previousY = this.y;
+
+                if (this.moveState === 'bekliyor') {
+                    this.idleTimer -= globalSpeedMult * dtFactor;
+                    if (this.idleTimer <= 0) {
+                        this.moveState = 'hareket_ediyor';
+                        this.pickDestination();
+                    }
+                } 
+                else if (this.moveState === 'hareket_ediyor') {
+                    let dx = this.targetX - this.x;
+                    let dy = this.targetY - this.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    let moveSpeed = this.personalSpeed * globalSpeedMult * dtFactor;
+
+                    if (dist < moveSpeed) {
+                        this.x = this.targetX;
+                        this.y = this.targetY;
+                        this.moveState = 'bekliyor';
+                        
+                        if (this.isIsolated) {
+                            this.idleTimer = 999999; 
+                        } else if (this.profile === 'rutin') {
+                            this.idleTimer = 80 + Math.random() * 80;
+                        } else if (this.profile === 'gezgin') {
+                            this.idleTimer = 10 + Math.random() * 30;
+                        } else {
+                            this.idleTimer = 150 + Math.random() * 150;
+                        }
+                    } else {
+                        this.x += (dx / dist) * moveSpeed;
+                        this.y += (dy / dist) * moveSpeed;
+                    }
+                }
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, PARTICLE_RADIUS, 0, Math.PI * 2);
+                ctx.fillStyle = COLORS[this.state];
+                
+                if(this.state === 'I') {
+                    ctx.shadowBlur = 4;
+                    ctx.shadowColor = COLORS.I;
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+                
+                ctx.fill();
+                ctx.shadowBlur = 0; 
+            }
+        }
+
+        function updateLabels() {
+            document.getElementById('val-transmission').innerText = paramTrans.value + '%';
+            document.getElementById('val-isolation').innerText = paramIso.value + '%';
+            document.getElementById('val-recovery').innerText = paramRecov.value + ' ' + t('sir_day');
+            document.getElementById('val-death').innerText = paramDeath.value + '%';
+            
+            let speedText = t('sir_speed_normal');
+            if(paramSpeed.value < 0.8) speedText = t('sir_speed_lockdown');
+            if(paramSpeed.value > 1.8) speedText = t('sir_speed_high');
+            document.getElementById('val-speed').innerText = speedText;
+        }
+
+        window.onLanguageChange = function() {
+            updateLabels();
+        };
+
+        [paramTrans, paramIso, paramRecov, paramDeath, paramSpeed].forEach(el => {
+            el.addEventListener('input', updateLabels);
+        });
+
+        function infectParticle(p) {
+            p.state = 'I';
+            p.infectionDays = 0;
+            p.recoveryTarget = getRecoveryDays();
+
+            const isoProb = parseInt(paramIso.value) / 100;
+            if (Math.random() < isoProb) {
+                p.isIsolated = true;
+                p.targetX = p.homeX;
+                p.targetY = p.homeY;
+                p.moveState = 'hareket_ediyor';
+            }
+        }
+
+        function initSimulation() {
+            if (animId) cancelAnimationFrame(animId); 
+            
+            particles = [];
+            historyData = [];
+            days = 0;
+            dayAccumulator = 0;
+            simulationActive = true;
+            dayCount.innerText = days;
+            
+            const speed = parseFloat(paramSpeed.value);
+            let initialCounts = { S: 0, I: 0, R: 0, D: 0 };
+
+            for (let i = 0; i < POPULATION; i++) {
+                let state = (i < 4) ? 'I' : 'S';
+                let x = Math.random() * (simCanvas.width - PARTICLE_RADIUS * 2) + PARTICLE_RADIUS;
+                let y = Math.random() * (simCanvas.height - PARTICLE_RADIUS * 2) + PARTICLE_RADIUS;
+                
+                let p = new Particle(i, state, x, y, speed);
+                
+                if (state === 'I') {
+                    infectParticle(p);
+                }
+
+                particles.push(p);
+                initialCounts[state]++;
+            }
+            
+            historyData.push({ s: initialCounts.S, i: initialCounts.I, r: initialCounts.R, d: initialCounts.D });
+            
+            updateLabels();
+            drawGraph();
+            lastTime = performance.now();
+            animId = requestAnimationFrame(animate);
+        }
+
+        function checkCollisions(deltaSeconds) {
+            const dailyTransProb = parseInt(paramTrans.value) / 100;
+            // Slider değeri günlük risk olarak yorumlanır ve kare riskine çevrilir.
+            const contactTransProb = 1 - Math.pow(1 - dailyTransProb, deltaSeconds / SECONDS_PER_DAY);
+            const pixelsPerKilometer = simCanvas.width / WORLD_WIDTH_KM;
+      
+            const collisionDist = Math.max(
+                CONTACT_DISTANCE_KM * pixelsPerKilometer,
+                PARTICLE_RADIUS * 2
+            );
+            const newlyInfected = new Set();
+
+            function segmentDistanceSquared(x1, y1, x2, y2, pointX, pointY) {
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const lengthSquared = dx * dx + dy * dy;
+                if (lengthSquared === 0) return (pointX - x1) ** 2 + (pointY - y1) ** 2;
+                const projection = Math.max(0, Math.min(1, ((pointX - x1) * dx + (pointY - y1) * dy) / lengthSquared));
+                const closestX = x1 + projection * dx;
+                const closestY = y1 + projection * dy;
+                return (pointX - closestX) ** 2 + (pointY - closestY) ** 2;
+            }
+
+            for (let i = 0; i < particles.length; i++) {
+                let p1 = particles[i];
+                if (p1.state === 'R' || p1.state === 'D' || p1.isIsolated) continue;
+
+                for (let j = i + 1; j < particles.length; j++) {
+                    let p2 = particles[j];
+                    if (p2.state === 'R' || p2.state === 'D' || p2.isIsolated) continue;
+                    if (p1.state === p2.state) continue;
+
+                    let dx = p1.x - p2.x;
+                    let dy = p1.y - p2.y;
+                    let distSq = dx * dx + dy * dy;
+
+                    const sweptDistSq = segmentDistanceSquared(p1.previousX, p1.previousY, p1.x, p1.y, p2.x, p2.y);
+                    const reverseSweptDistSq = segmentDistanceSquared(p2.previousX, p2.previousY, p2.x, p2.y, p1.x, p1.y);
+                    if (Math.min(distSq, sweptDistSq, reverseSweptDistSq) < collisionDist * collisionDist) {
+                        if (Math.random() < contactTransProb) {
+                            if (p1.state === 'S') newlyInfected.add(p1);
+                            if (p2.state === 'S') newlyInfected.add(p2);
+                        }
+                    }
+                }
+            }
+
+            newlyInfected.forEach(infectParticle);
+        }
+
+        function drawGraph() {
+            screenCtx.fillStyle = '#141923';
+            screenCtx.fillRect(0, 0, screenCanvas.width, screenCanvas.height);
+            
+            if (historyData.length < 2) return;
+
+            const width = screenCanvas.width;
+            const height = screenCanvas.height;
+            const totalPoints = historyData.length;
+
+            const getX = (i) => (i / (totalPoints - 1)) * width;
+            const getY = (val) => height - (val / POPULATION) * height;
+
+            screenCtx.fillStyle = COLORS.S;
+            screenCtx.beginPath();
+            screenCtx.moveTo(0, height);
+            for (let i = 0; i < totalPoints; i++) { screenCtx.lineTo(getX(i), getY(POPULATION)); }
+            screenCtx.lineTo(width, height);
+            screenCtx.closePath();
+            screenCtx.fill();
+
+            screenCtx.fillStyle = COLORS.I;
+            screenCtx.beginPath();
+            screenCtx.moveTo(0, height);
+            for (let i = 0; i < totalPoints; i++) { screenCtx.lineTo(getX(i), getY(historyData[i].d + historyData[i].r + historyData[i].i)); }
+            screenCtx.lineTo(width, height);
+            screenCtx.closePath();
+            screenCtx.fill();
+
+            screenCtx.fillStyle = COLORS.R;
+            screenCtx.beginPath();
+            screenCtx.moveTo(0, height);
+            for (let i = 0; i < totalPoints; i++) { screenCtx.lineTo(getX(i), getY(historyData[i].d + historyData[i].r)); }
+            screenCtx.lineTo(width, height);
+            screenCtx.closePath();
+            screenCtx.fill();
+
+            screenCtx.fillStyle = COLORS.D;
+            screenCtx.beginPath();
+            screenCtx.moveTo(0, height);
+            for (let i = 0; i < totalPoints; i++) { screenCtx.lineTo(getX(i), getY(historyData[i].d)); }
+            screenCtx.lineTo(width, height);
+            screenCtx.closePath();
+            screenCtx.fill();
+        }
+
+        function animate(currentTime) {
+            if (!simulationActive) return;
+
+            // Delta time (zaman farkı) hesabı
+            if (!currentTime) currentTime = performance.now();
+            const deltaSeconds = Math.min(Math.max((currentTime - lastTime) / 1000, 0), 30);
+            lastTime = currentTime;
+            
+            // 60 FPS referanslı çarpan (60 FPS'te dtFactor = 1.0)
+            const dtFactor = deltaSeconds * 60;
+
+            simCtx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
+            simCtx.fillRect(0, 0, simCanvas.width, simCanvas.height);
+
+            const currentSpeed = parseFloat(paramSpeed.value);
+
+            particles.forEach(p => {
+                p.update(currentSpeed, dtFactor);
+                p.draw(simCtx);
+            });
+            
+            checkCollisions(deltaSeconds);
+
+            let counts = { S: 0, I: 0, R: 0, D: 0 };
+            particles.forEach(p => counts[p.state]++);
+
+            statS.innerText = counts.S;
+            statI.innerText = counts.I;
+            statR.innerText = counts.R;
+            statD.innerText = counts.D;
+
+            // Gün adımı hesabı
+            dayAccumulator += deltaSeconds;
+            
+            while (dayAccumulator >= SECONDS_PER_DAY) { 
+                dayAccumulator -= SECONDS_PER_DAY;
+                days++;
+                dayCount.innerText = days;
+                
+                const deathProb = parseInt(paramDeath.value) / 100;
+
+                particles.forEach(p => {
+                    if (p.state === 'I') {
+                        p.infectionDays++;
+                        if (p.infectionDays >= p.recoveryTarget) {
+                            if (Math.random() < deathProb) {
+                                p.state = 'D'; 
+                            } else {
+                                p.state = 'R'; 
+                            }
+                            p.isIsolated = false;
+                        }
+                    }
+                });
+
+                let newCounts = { S: 0, I: 0, R: 0, D: 0 };
+                particles.forEach(p => newCounts[p.state]++);
+
+                historyData.push({ s: newCounts.S, i: newCounts.I, r: newCounts.R, d: newCounts.D });
+                
+                statS.innerText = newCounts.S;
+                statI.innerText = newCounts.I;
+                statR.innerText = newCounts.R;
+                statD.innerText = newCounts.D;
+
+                drawGraph();
+
+                if (newCounts.I === 0) {
+                    simulationActive = false;
+                    simCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    simCtx.fillRect(0, 0, simCanvas.width, simCanvas.height);
+                    simCtx.fillStyle = '#fff';
+                    simCtx.font = 'bold 22px Arial';
+                    simCtx.textAlign = 'center';
+                    simCtx.fillText(t('sir_ended'), simCanvas.width / 2, simCanvas.height / 2);
+                }
+            }
+
+            if (simulationActive) {
+                animId = requestAnimationFrame(animate);
+            }
+        }
+
+        resetBtn.addEventListener('click', () => {
+            initSimulation();
+        });
+
+        initSimulation();
+    </script>
+</body>
+</html>

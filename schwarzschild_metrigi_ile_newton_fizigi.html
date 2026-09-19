@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="bh_page_title">3B Görelilik ve Kara Delik Simülasyonu</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        #webgl-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; touch-action: none; }
+        
+        /* Yuvarlak Geri Dön / Ana Ekran Butonu */
+        .home-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(18, 24, 38, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .home-btn:hover {
+            background: rgba(30, 41, 59, 0.9);
+            transform: scale(1.05);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .home-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal Onay Penceresi */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #111827;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 28px 24px 24px 24px;
+            width: 88%;
+            max-width: 340px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            transform: scale(0.92);
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.2px;
+        }
+
+        .modal-desc {
+            font-size: 13.5px;
+            color: #94a3b8;
+            margin: 0 0 24px 0;
+            line-height: 1.4;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn-cancel {
+            background: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .modal-btn-cancel:hover {
+            background: #334155;
+        }
+
+        .modal-btn-cancel:active {
+            transform: scale(0.96);
+        }
+
+        .modal-btn-confirm {
+            background: #22d3ee;
+            color: #0f172a;
+        }
+
+        .modal-btn-confirm:hover {
+            background: #06b6d4;
+        }
+
+        .modal-btn-confirm:active {
+            transform: scale(0.96);
+        }
+
+        /* UI Paneli */
+        #ui-panel {
+            position: absolute;
+            bottom: 15px; left: 12px; right: 12px;
+            z-index: 10;
+            background: rgba(10, 12, 20, 0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 16px 18px;
+            color: #fff;
+            max-height: 60vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+        }
+
+        @media (min-width: 600px) {
+            #ui-panel { top: 75px; left: 20px; right: auto; bottom: auto; width: 380px; max-height: 80vh; }
+        }
+
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        h1 { font-size: 1.1rem; color: #38bdf8; font-weight: 600; }
+        
+        .btn-group { display: flex; gap: 6px; }
+        .btn-action { background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #38bdf8; padding: 6px 11px; border-radius: 6px; font-size: 0.78rem; cursor: pointer; transition: 0.2s; font-weight: 500; }
+        .btn-action:hover { background: rgba(56, 189, 248, 0.3); }
+
+        .control-group { margin-bottom: 14px; }
+        label { display: flex; justify-content: space-between; font-size: 0.85rem; color: #e5e7eb; margin-bottom: 4px; font-weight: 500; }
+        span.val { color: #38bdf8; font-weight: bold; }
+        input[type="range"] { width: 100%; height: 6px; accent-color: #38bdf8; cursor: pointer; }
+        
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 10px; color: #e5e7eb; }
+        input[type="checkbox"] { accent-color: #38bdf8; width: 18px; height: 18px; cursor: pointer; }
+
+        .info-tip { font-size: 0.75rem; color: #9ca3af; margin-top: 3px; line-height: 1.3; }
+
+        #science-modal {
+            display: none;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            width: 92%; max-width: 620px;
+            max-height: 82vh;
+            background: rgba(13, 17, 23, 0.97);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 16px;
+            padding: 22px 26px;
+            color: #e2e8f0;
+            overflow-y: auto;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+        }
+
+        #science-modal h2 { font-size: 1.25rem; color: #38bdf8; margin-bottom: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 8px; }
+        #science-modal h3 { font-size: 0.98rem; color: #f59e0b; margin: 14px 0 6px 0; font-weight: 600; }
+        #science-modal p { font-size: 0.85rem; line-height: 1.55; color: #cbd5e1; margin-bottom: 8px; }
+        #science-modal ul { font-size: 0.85rem; line-height: 1.55; color: #cbd5e1; margin-left: 18px; margin-bottom: 8px; }
+        #science-modal code { background: rgba(56, 189, 248, 0.12); padding: 2px 6px; border-radius: 4px; color: #38bdf8; font-family: monospace; font-size: 0.82rem; }
+        .close-modal { position: absolute; top: 16px; right: 20px; font-size: 1.3rem; color: #9ca3af; cursor: pointer; }
+        .close-modal:hover { color: #fff; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="lang.js"></script>
+</head>
+<body>
+
+    <!-- Yuvarlak Ok Iconlu Ana Ekrana Dön Butonu -->
+    <button class="home-btn" id="btnHome" aria-label="Ana Ekrana Dön" data-i18n-aria-label="bh_back_aria">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+    </button>
+
+    <!-- Modal Onay Penceresi -->
+    <div class="modal-overlay" id="homeModal">
+        <div class="modal-card">
+            <h3 class="modal-title" data-i18n="bh_modal_title">Ana Ekrana Dön</h3>
+            <p class="modal-desc" data-i18n="bh_modal_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" id="btnModalCancel" data-i18n="bh_cancel">İptal</button>
+                <button class="modal-btn modal-btn-confirm" id="btnModalConfirm" data-i18n="bh_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ui-panel">
+        <div class="panel-header">
+            <h1 data-i18n="bh_title">Kara Delik ve Işık Bükülmesi</h1>
+            <div class="btn-group">
+                <button class="btn-action" id="btnScience" data-i18n="bh_science">💡 Nasıl Çalışır?</button>
+                <button class="btn-action" id="btnToggle" data-i18n="bh_hide">Gizle</button>
+            </div>
+        </div>
+        <div id="panelBody">
+            <div class="control-group">
+                <label><span data-i18n="bh_mass">Kara Delik Kütlesi:</span> <span id="massVal" class="val">4.0</span></label>
+                <input type="range" id="massInput" min="1.0" max="5.0" step="0.1" value="4.0">
+                <div class="info-tip" data-i18n="bh_mass_tip">Kütle arttıkça kara deliğin çekim gücü ve gölge boyutu büyür.</div>
+            </div>
+
+            <div class="control-group">
+                <label><span data-i18n="bh_density">Işık Yörünge Çizgileri:</span> <span id="densityVal" class="val">14x14</span></label>
+                <input type="range" id="densityInput" min="6" max="24" step="2" value="14">
+                <div class="info-tip" data-i18n="bh_density_tip">Uzayda ilerleyen ışık ışınlarının izlediği bükülmüş yollar.</div>
+            </div>
+
+            <div class="toggle-row">
+                <span data-i18n="bh_nebula">Arka Plan Derin Uzay (Uzak Yıldızlar)</span>
+                <input type="checkbox" id="chkNebula" checked>
+            </div>
+
+            <div class="toggle-row">
+                <span data-i18n="bh_disk">Gaz Diski (Akresyon Diski)</span>
+                <input type="checkbox" id="chkDisk" checked>
+            </div>
+
+            <div class="toggle-row">
+                <span data-i18n="bh_photon_ring">Foton Halkası (Işık Kapanı Sınırı)</span>
+                <input type="checkbox" id="chkPhotonRing" checked>
+            </div>
+
+            <div class="toggle-row">
+                <span data-i18n="bh_rays">3B Işık Işını Çizgileri</span>
+                <input type="checkbox" id="chkRays" checked>
+            </div>
+        </div>
+    </div>
+
+    <div id="science-modal">
+        <span class="close-modal" id="btnCloseModal">&times;</span>
+        <h2 data-i18n="bh_science_title">Einstein'ın Görelilik Kuramı ile Bükülen Işık</h2>
+        
+        <p data-i18n="bh_intro">Bu simülasyon, Einstein'ın Genel Görelilik Kuramı'nı kullanarak ışığın devasa bir kütleçekim etrafında nasıl büküldüğünü hesaplar.</p>
+
+        <h3 data-i18n="bh_sec1_title">1. Uzay-Zamanın Bükülmesi (Schwarzschild Metriği)</h3>
+        <p data-i18n="bh_sec1_desc">Kara delik uzay-zaman dokusunu derin bir kuyu gibi büker. Işık uzayda aslında hep "dümdüz" gitmeye çalışır; fakat geçtiği uzay bükülmüş olduğu için dışarıdan bakan biri ışığın yolunun eğrildiğini görür.</p>
+
+        <h3 data-i18n="bh_sec2_title">2. Gerçek Işık Yörüngeleri (Null Jeodezikler)</h3>
+        <p data-i18n="bh_sec2_desc">Eski tarz basit çekim kuvveti yaklaşımları yerine, bu simülasyonda ışığın izlediği tam rölativistik rotalar hesaplanır:</p>
+        <p><code><span data-i18n="bh_equation_label">Denklem</span>: d²x/dλ² = - (3/2) · rₛ · L² · x / r⁵</code></p>
+        <p data-i18n="bh_sec2_result">Bu denklem sayesinde kara deliğe çok yaklaşan ışıkların etrafında dönüp kaçması veya içeri çekilmesi tam fiziksel doğruluğuyla gösterilir.</p>
+
+        <h3 data-i18n="bh_sec3_title">3. Foton Halkası Nedir? (Sarı Kesikli Çizgi)</h3>
+        <p data-i18n="bh_sec3_desc">Kara deliğin merkezinden <code>1.5 × rₛ</code> uzaklıkta bulunan kritik sınırdır. Buraya doğru açıyla gelen ışık, kara deliğin etrafında bir yörüngeye girer ve dairesel olarak dönmeye başlar.</p>
+
+        <h3 data-i18n="bh_sec4_title">4. Gaz Diskindeki Renk ve Parlaklık Değişimleri</h3>
+        <ul>
+            <li data-i18n="bh_doppler"><b>Doppler Etkisi:</b> Bize doğru yüksek hızla yaklaşan gazlar daha parlak ve mavi tonlarda görünür. Uzaklaşan taraf ise daha sönük ve kırmızıdır.</li>
+            <li data-i18n="bh_redshift"><b>Kütleçekimsel Kırmızıya Kayma:</b> Kara deliğin güçlü çekim kuyusundan tırmanıp bize ulaşan ışık enerji kaybeder ve rengi kırmızıya kayar.</li>
+        </ul>
+    </div>
+
+    <div id="webgl-container"></div>
+
+    <script>
+        // --- ANA EKRANA DÖN & MODAL MANTIĞI ---
+        const btnHome = document.getElementById('btnHome');
+        const homeModal = document.getElementById('homeModal');
+        const btnModalCancel = document.getElementById('btnModalCancel');
+        const btnModalConfirm = document.getElementById('btnModalConfirm');
+
+        btnHome.addEventListener('click', () => {
+            homeModal.classList.add('active');
+        });
+
+        btnModalCancel.addEventListener('click', () => {
+            homeModal.classList.remove('active');
+        });
+
+        homeModal.addEventListener('click', (e) => {
+            if (e.target === homeModal) {
+                homeModal.classList.remove('active');
+            }
+        });
+
+        btnModalConfirm.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        // --- SİMÜLASYON KURULUMU ---
+        const container = document.getElementById('webgl-container');
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 600;
+
+        const btnToggle = document.getElementById('btnToggle');
+        const panelBody = document.getElementById('panelBody');
+        btnToggle.onclick = () => {
+            if (panelBody.style.display === 'none') {
+                panelBody.style.display = 'block';
+                btnToggle.innerText = t('bh_hide');
+            } else {
+                panelBody.style.display = 'none';
+                btnToggle.innerText = t('bh_show');
+            }
+        };
+
+        window.onLanguageChange = function() {
+            btnToggle.innerText = panelBody.style.display === 'none' ? t('bh_show') : t('bh_hide');
+        };
+
+        const scienceModal = document.getElementById('science-modal');
+        document.getElementById('btnScience').onclick = () => scienceModal.style.display = 'block';
+        document.getElementById('btnCloseModal').onclick = () => scienceModal.style.display = 'none';
+
+        const scene = new THREE.Scene();
+
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(0, 14, 40);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(isMobile ? 1.0 : Math.min(window.devicePixelRatio, 1.5));
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 4;
+        controls.maxDistance = 250;
+
+        let rs = 4.0;
+        const c = 10.0;
+
+        const blackHoleGroup = new THREE.Group();
+        scene.add(blackHoleGroup);
+
+        const eventHorizon = new THREE.Mesh(
+            new THREE.SphereGeometry(1, 32, 32),
+            new THREE.MeshBasicMaterial({ color: 0x000000 })
+        );
+        blackHoleGroup.add(eventHorizon);
+
+        let lensingSphere;
+        let lensingMaterial;
+
+        function createLensingSky() {
+            if (lensingSphere) scene.remove(lensingSphere);
+
+            const skyGeo = new THREE.SphereGeometry(600, 32, 32);
+            lensingMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    uCameraPos: { value: camera.position },
+                    uRs: { value: rs },
+                    uTime: { value: 0.0 },
+                    uEnableDisk: { value: 1.0 },
+                    uEnableNebula: { value: 1.0 }
+                },
+                vertexShader: `
+                    varying vec3 vRayDir;
+                    uniform vec3 uCameraPos;
+
+                    void main() {
+                        vec4 wp = modelMatrix * vec4(position, 1.0);
+                        vRayDir = normalize(wp.xyz - uCameraPos);
+                        gl_Position = projectionMatrix * viewMatrix * wp;
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 uCameraPos;
+                    uniform float uRs;
+                    uniform float uTime;
+                    uniform float uEnableDisk;
+                    uniform float uEnableNebula;
+                    varying vec3 vRayDir;
+
+                    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                    vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                    vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+                    float snoise(vec2 v) {
+                        const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+                        vec2 i  = floor(v + dot(v, C.yy) );
+                        vec2 x0 = v -   i + dot(i, C.xx);
+                        vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+                        vec4 x12 = x0.xyxy + C.xxzz;
+                        x12.xy -= i1;
+                        i = mod289(i);
+                        vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 )) + i.x + vec3(0.0, i1.x, 1.0 ));
+                        vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+                        m = m*m; m = m*m;
+                        vec3 x = 2.0 * fract(p * C.www) - 1.0;
+                        vec3 h = abs(x) - 0.5;
+                        vec3 ox = floor(x + 0.5);
+                        vec3 a0 = x - ox;
+                        m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+                        vec3 g;
+                        g.x  = a0.x  * x0.x  + h.x  * x0.y;
+                        g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+                        return 130.0 * dot(m, g);
+                    }
+
+                    float hash13(vec3 p3) {
+                        p3  = fract(p3 * .1031);
+                        p3 += dot(p3, p3.zyx + 31.32);
+                        return fract((p3.x + p3.y) * p3.z);
+                    }
+
+                    vec3 hash33(vec3 p3) {
+                        p3 = fract(p3 * vec3(.1031, .1030, .0973));
+                        p3 += dot(p3, p3.yxz + 33.33);
+                        return fract((p3.xxy + p3.yzz) * p3.zyx);
+                    }
+
+                    float noise3D(vec3 p) {
+                        vec3 i = floor(p);
+                        vec3 f = fract(p);
+                        f = f * f * (3.0 - 2.0 * f);
+
+                        return mix(
+                            mix(mix(hash13(i + vec3(0,0,0)), hash13(i + vec3(1,0,0)), f.x),
+                                mix(hash13(i + vec3(0,1,0)), hash13(i + vec3(1,1,0)), f.x), f.y),
+                            mix(mix(hash13(i + vec3(0,0,1)), hash13(i + vec3(1,0,1)), f.x),
+                                mix(hash13(i + vec3(0,1,1)), hash13(i + vec3(1,1,1)), f.x), f.y), f.z);
+                    }
+
+                    float fbm(vec3 p) {
+                        float v = 0.0;
+                        float a = 0.5;
+                        for (int i = 0; i < 4; i++) {
+                            v += a * noise3D(p);
+                            p *= 2.05;
+                            a *= 0.5;
+                        }
+                        return v;
+                    }
+
+                    vec3 getBlackbodyColor(float Temp) {
+                        float t = clamp(Temp, 0.0, 1.0);
+                        vec3 col;
+                        col.r = smoothstep(0.0, 0.35, t) * 1.3;
+                        col.g = smoothstep(0.12, 0.65, t) * 1.05;
+                        col.b = smoothstep(0.32, 0.95, t) * 1.6;
+                        vec3 hotBlue = vec3(0.7, 0.9, 1.4);
+                        return mix(col, hotBlue, smoothstep(0.7, 1.0, t));
+                    }
+
+                    vec3 getStars(vec3 dir) {
+                        vec3 stars = vec3(0.0);
+
+                        vec3 g1 = floor(dir * 320.0);
+                        vec3 f1 = fract(dir * 320.0) - 0.5;
+                        vec3 rnd1 = hash33(g1);
+                        
+                        if (rnd1.x > 0.93) {
+                            float d = length(f1 - (rnd1 - 0.5) * 0.6);
+                            float intensity = smoothstep(0.1, 0.0, d);
+                            float twinkle = 0.8 + 0.2 * sin(uTime * 3.0 + rnd1.y * 100.0);
+                            vec3 col = mix(vec3(0.7, 0.85, 1.0), vec3(1.0, 0.9, 0.7), rnd1.z);
+                            stars += col * intensity * 1.8 * twinkle;
+                        }
+
+                        vec3 g2 = floor(dir * 140.0);
+                        vec3 f2 = fract(dir * 140.0) - 0.5;
+                        vec3 rnd2 = hash33(g2);
+                        
+                        if (rnd2.x > 0.975) {
+                            float d = length(f2 - (rnd2 - 0.5) * 0.5);
+                            float core = smoothstep(0.18, 0.0, d);
+                            float halo = exp(-d * d * 80.0) * 0.25;
+                            float twinkle = 0.75 + 0.25 * sin(uTime * 4.2 + rnd2.z * 50.0);
+                            vec3 col = mix(vec3(0.5, 0.8, 1.0), vec3(1.0, 0.65, 0.45), rnd2.y);
+                            stars += col * (core + halo) * 2.8 * twinkle;
+                        }
+
+                        return stars;
+                    }
+
+                    vec3 getSkyColor(vec3 dir) {
+                        vec3 spaceBackground = vec3(0.002, 0.003, 0.008);
+                        vec3 nebula = vec3(0.0);
+
+                        if (uEnableNebula > 0.5) {
+                            float n1 = fbm(dir * 1.8 + vec3(0.2, -0.5, 0.8));
+                            float n2 = fbm(dir * 2.8 - vec3(0.8, 0.4, 0.2));
+                            
+                            float cloud1 = smoothstep(0.3, 0.75, n1);
+                            float cloud2 = smoothstep(0.35, 0.8, n2);
+
+                            vec3 cyanVioletDust = mix(vec3(0.08, 0.05, 0.22), vec3(0.02, 0.18, 0.25), n2);
+                            vec3 goldenOrangeDust = vec3(0.25, 0.12, 0.05);
+
+                            nebula = cyanVioletDust * cloud1 * 0.9 + goldenOrangeDust * cloud2 * 0.5;
+                        }
+
+                        return spaceBackground + nebula + getStars(dir);
+                    }
+
+                    vec4 sampleAccretionDisk(vec3 hitPos, vec3 rayVel) {
+                        float r = length(hitPos.xz);
+                        float rIn = 3.0 * uRs;
+                        float rOut = 9.0 * uRs;
+
+                        if (r < rIn || r > rOut) return vec4(0.0);
+
+                        float R = r / uRs;
+                        float tempProfile = pow(3.0 / R, 0.75) * pow(max(0.001, 1.0 - sqrt(3.0 / R)), 0.25);
+                        tempProfile = clamp(tempProfile * 2.5, 0.0, 1.0);
+
+                        float angle = atan(hitPos.z, hitPos.x);
+                        float keplerSpeed = 2.8 * pow(3.0 / R, 1.5);
+                        float shearedAngle = angle + uTime * keplerSpeed * 0.35;
+
+                        float noiseVal = snoise(vec2(R * 4.0, shearedAngle * 8.0));
+                        float turbulence = 0.65 + 0.35 * noiseVal;
+
+                        float beta = clamp(sqrt(0.5 / R), 0.0, 0.45);
+                        vec3 vDir = normalize(vec3(-hitPos.z, 0.0, hitPos.x));
+                        vec3 viewDir = normalize(-rayVel);
+
+                        float cosTheta = dot(vDir, viewDir);
+                        float gamma = 1.0 / sqrt(1.0 - beta * beta);
+                        float dopplerFactor = 1.0 / (gamma * (1.0 - beta * cosTheta));
+
+                        float gravRedshift = sqrt(clamp(1.0 - 1.0 / R, 0.02, 1.0));
+                        float totalShift = dopplerFactor * gravRedshift;
+
+                        vec3 baseColor = getBlackbodyColor(tempProfile * totalShift);
+                        vec3 finalColor = baseColor * pow(totalShift, 3.8) * turbulence * 1.6;
+
+                        float innerAlpha = smoothstep(rIn, rIn + 0.4 * uRs, r);
+                        float outerAlpha = 1.0 - smoothstep(rOut - 2.0 * uRs, rOut, r);
+                        float alpha = innerAlpha * outerAlpha * clamp(pow(totalShift, 2.0) * 0.75, 0.2, 0.95);
+
+                        return vec4(finalColor, alpha);
+                    }
+
+                    vec3 computeGeodesicAccel(vec3 xPos, vec3 xVel) {
+                        vec3 L_vec = cross(xPos, xVel);
+                        float L2 = dot(L_vec, L_vec);
+                        float r2 = max(dot(xPos, xPos), 0.001);
+                        float r5 = r2 * r2 * sqrt(r2);
+                        return - (1.5 * uRs * L2 / r5) * xPos;
+                    }
+
+                    void main() {
+                        vec3 rayOrigin = uCameraPos;
+                        vec3 rayDir = normalize(vRayDir);
+
+                        vec3 pos = rayOrigin;
+                        vec3 vel = rayDir * 10.0;
+
+                        float dLambda = 0.06;
+                        vec3 accumulatedColor = vec3(0.0);
+                        float accumulatedAlpha = 0.0;
+                        bool captured = false;
+
+                        float maxR = max(300.0, length(uCameraPos) + 100.0);
+
+                        for (int i = 0; i < 130; i++) {
+                            vec3 prevPos = pos;
+                            float r2 = dot(pos, pos);
+                            float r = sqrt(r2);
+
+                            if (r <= uRs * 1.005) { captured = true; break; }
+                            if (r > maxR) break;
+
+                            float stepScale = clamp(r / (2.0 * uRs), 0.15, 5.0);
+                            float dt = dLambda * stepScale;
+
+                            vec3 a1 = computeGeodesicAccel(pos, vel);
+                            vec3 posMid = pos + 0.5 * vel * dt;
+                            vec3 velMid = vel + 0.5 * a1 * dt;
+
+                            vec3 a2 = computeGeodesicAccel(posMid, velMid);
+                            pos += velMid * dt;
+                            vel += a2 * dt;
+
+                            if (uEnableDisk > 0.5 && prevPos.y * pos.y <= 0.0 && abs(prevPos.y - pos.y) > 0.0001) {
+                                float t = abs(prevPos.y) / abs(prevPos.y - pos.y);
+                                vec3 hitPos = mix(prevPos, pos, t);
+
+                                vec4 diskSample = sampleAccretionDisk(hitPos, vel);
+                                if (diskSample.a > 0.0) {
+                                    accumulatedColor += (1.0 - accumulatedAlpha) * diskSample.rgb * diskSample.a;
+                                    accumulatedAlpha += (1.0 - accumulatedAlpha) * diskSample.a;
+                                    if (accumulatedAlpha >= 0.98) break;
+                                }
+                            }
+                        }
+
+                        if (captured && accumulatedAlpha < 0.95) {
+                            gl_FragColor = vec4(accumulatedColor, 1.0);
+                        } else {
+                            vec3 finalSky = getSkyColor(normalize(vel));
+                            vec3 finalColor = accumulatedColor + (1.0 - accumulatedAlpha) * finalSky;
+                            gl_FragColor = vec4(finalColor, 1.0);
+                        }
+                    }
+                `,
+                side: THREE.BackSide
+            });
+
+            lensingSphere = new THREE.Mesh(skyGeo, lensingMaterial);
+            scene.add(lensingSphere);
+        }
+
+        let photonSphereGroup = new THREE.Group();
+        blackHoleGroup.add(photonSphereGroup);
+
+        function createPhotonSphereMarker() {
+            while(photonSphereGroup.children.length > 0){
+                const obj = photonSphereGroup.children[0];
+                obj.geometry.dispose();
+                obj.material.dispose();
+                photonSphereGroup.remove(obj);
+            }
+
+            const segments = 64;
+            const points = [];
+            for (let i = 0; i <= segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                points.push(new THREE.Vector3(1.5 * rs * Math.cos(theta), 0, 1.5 * rs * Math.sin(theta)));
+            }
+            const ringGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const ringMat = new THREE.LineDashedMaterial({
+                color: 0xf59e0b, dashSize: 0.8, gapSize: 0.4, transparent: true, opacity: 0.85
+            });
+            const ringLine = new THREE.LineLoop(ringGeo, ringMat);
+            ringLine.computeLineDistances();
+            photonSphereGroup.add(ringLine);
+        }
+
+        let rayLinesGroup = new THREE.Group();
+        scene.add(rayLinesGroup);
+
+        function updateLightRays() {
+            while (rayLinesGroup.children.length > 0) {
+                const obj = rayLinesGroup.children[0];
+                obj.geometry.dispose();
+                obj.material.dispose();
+                rayLinesGroup.remove(obj);
+            }
+
+            if (!document.getElementById('chkRays').checked) return;
+
+            const gridDim = parseInt(document.getElementById('densityInput').value);
+            const totalWidth = 32.0;
+            const spacing = totalWidth / gridDim;
+            const startZ = -45;
+            const raySteps = isMobile ? 140 : 220;
+
+            for (let ix = -gridDim / 2; ix <= gridDim / 2; ix++) {
+                for (let iy = -gridDim / 2; iy <= gridDim / 2; iy++) {
+                    let rx = ix * spacing;
+                    let ry = iy * spacing;
+                    let rz = startZ;
+
+                    let vx = 0; 
+                    let vy = 0; 
+                    let vz = c;
+
+                    const points = [new THREE.Vector3(rx, ry, rz)];
+                    let captured = false;
+
+                    for (let step = 0; step < raySteps; step++) {
+                        const r2 = rx * rx + ry * ry + rz * rz;
+                        const r = Math.sqrt(r2);
+
+                        if (r <= rs * 1.02) {
+                            captured = true;
+                            points.push(new THREE.Vector3(rx, ry, rz));
+                            break;
+                        }
+
+                        const dt = 0.04 * Math.min(Math.max(r / (2.0 * rs), 0.1), 2.5);
+
+                        const Lx1 = ry * vz - rz * vy;
+                        const Ly1 = rz * vx - rx * vz;
+                        const Lz1 = rx * vy - ry * vx;
+                        const L2_1 = Lx1 * Lx1 + Ly1 * Ly1 + Lz1 * Lz1;
+                        const safeR2_1 = Math.max(r2, 0.4);
+                        const accelMag1 = - (1.5 * rs * L2_1) / (safeR2_1 * safeR2_1 * Math.sqrt(safeR2_1));
+
+                        const ax1 = accelMag1 * rx;
+                        const ay1 = accelMag1 * ry;
+                        const az1 = accelMag1 * rz;
+
+                        const rxMid = rx + 0.5 * vx * dt;
+                        const ryMid = ry + 0.5 * vy * dt;
+                        const rzMid = rz + 0.5 * vz * dt;
+
+                        const vxMid = vx + 0.5 * ax1 * dt;
+                        const vyMid = vy + 0.5 * ay1 * dt;
+                        const vzMid = vz + 0.5 * az1 * dt;
+
+                        const r2Mid = rxMid * rxMid + ryMid * ryMid + rzMid * rzMid;
+                        const Lx2 = ryMid * vzMid - rzMid * vyMid;
+                        const Ly2 = rzMid * vxMid - rxMid * vzMid;
+                        const Lz2 = rxMid * vyMid - ryMid * vxMid;
+                        const L2_2 = Lx2 * Lx2 + Ly2 * Ly2 + Lz2 * Lz2;
+                        const safeR2_2 = Math.max(r2Mid, 0.4);
+                        const accelMag2 = - (1.5 * rs * L2_2) / (safeR2_2 * safeR2_2 * Math.sqrt(safeR2_2));
+
+                        vx += accelMag2 * rxMid * dt;
+                        vy += accelMag2 * ryMid * dt;
+                        vz += accelMag2 * rzMid * dt;
+
+                        rx += vxMid * dt;
+                        ry += vyMid * dt;
+                        rz += vzMid * dt;
+
+                        if (isNaN(rx) || isNaN(ry) || isNaN(rz)) break;
+
+                        points.push(new THREE.Vector3(rx, ry, rz));
+
+                        if (rz > 50 || r > 120) break;
+                    }
+
+                    if (points.length > 2) {
+                        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                        const material = new THREE.LineBasicMaterial({
+                            color: captured ? 0xff2d55 : 0x00f3ff,
+                            transparent: true,
+                            opacity: captured ? 0.75 : 0.88,
+                            depthWrite: false
+                        });
+                        rayLinesGroup.add(new THREE.Line(geometry, material));
+                    }
+                }
+            }
+        }
+
+        function updateAll() {
+            eventHorizon.scale.set(rs, rs, rs);
+            createPhotonSphereMarker();
+            createLensingSky();
+            updateLightRays();
+        }
+
+        document.getElementById('massInput').oninput = (e) => {
+            rs = parseFloat(e.target.value);
+            document.getElementById('massVal').innerText = rs.toFixed(1);
+            updateAll();
+        };
+        document.getElementById('densityInput').onchange = (e) => {
+            document.getElementById('densityVal').innerText = `${e.target.value}x${e.target.value}`;
+            updateLightRays();
+        };
+        document.getElementById('chkNebula').onchange = (e) => {
+            if (lensingMaterial) lensingMaterial.uniforms.uEnableNebula.value = e.target.checked ? 1.0 : 0.0;
+        };
+        document.getElementById('chkDisk').onchange = (e) => {
+            if (lensingMaterial) lensingMaterial.uniforms.uEnableDisk.value = e.target.checked ? 1.0 : 0.0;
+        };
+        document.getElementById('chkPhotonRing').onchange = (e) => photonSphereGroup.visible = e.target.checked;
+        document.getElementById('chkRays').onchange = () => updateLightRays();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        updateAll();
+
+        // --- DELTA TIME ENTEGRASYONLU ANİMASYON DÖNGÜSÜ ---
+        const clock = new THREE.Clock();
+        let accumulatedTime = 0;
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Ekran tazeleme hızından (60Hz / 120Hz / 144Hz) bağımsız stabil delta zamanı
+            const delta = clock.getDelta();
+            const clampedDelta = Math.min(delta, 0.1); // Sekme değişimlerinde aşırı sıçramayı önleme
+            accumulatedTime += clampedDelta;
+
+            if (lensingMaterial) {
+                lensingMaterial.uniforms.uCameraPos.value.copy(camera.position);
+                lensingMaterial.uniforms.uRs.value = rs;
+                lensingMaterial.uniforms.uTime.value = accumulatedTime;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>

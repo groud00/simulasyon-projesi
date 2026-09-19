@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="gs_page_title">Gravitasyonel Sapan (Gravity Assist) Simülasyonu - HD</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #000004; 
+            --card-bg: rgba(10, 14, 26, 0.88); 
+            --backdrop: blur(25px);
+            --accent-gold: #ffd700; 
+            --accent-blue: #00f2fe; 
+            --accent-red: #ff3366;
+            --accent-green: #00ff88; 
+            --accent-purple: #b026ff;
+            --accent-orange: #ff8c00; 
+            --text-main: #f8fafc; 
+            --text-muted: #94a3b8;
+        }
+
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background-color: var(--bg-color); 
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+            color: var(--text-main); 
+            overflow: hidden; 
+            user-select: none; 
+            touch-action: none; 
+        }
+
+        #canvas-container { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 0; 
+        }
+        canvas { display: block; width: 100%; height: 100%; outline: none; }
+
+        /* Sol Üst Geri Butonu */
+        .back-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(8, 12, 22, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            touch-action: manipulation;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .back-btn:active {
+            transform: scale(0.92);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Ana Ekran Onay Modalı */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #111726;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 28px 24px;
+            width: 100%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-card h3 {
+            margin: 0 0 10px 0;
+            color: #ffffff;
+            font-size: 19px;
+            font-weight: 700;
+        }
+
+        .modal-card p {
+            margin: 0 0 24px 0;
+            color: #94a3b8;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-cancel, .btn-confirm {
+            flex: 1;
+            padding: 12px 0;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn-cancel {
+            background: #232b3e;
+            color: #ffffff;
+        }
+
+        .btn-confirm {
+            background: #29b6f6;
+            color: #0d1527;
+        }
+
+        .btn-cancel:active, .btn-confirm:active {
+            transform: scale(0.96);
+            opacity: 0.9;
+        }
+
+        #top-container {
+            position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+            width: 92%; max-width: 650px; z-index: 100;
+            display: flex; flex-direction: column; gap: 8px;
+            pointer-events: none;
+        }
+
+        #top-bar {
+            pointer-events: auto;
+            background: rgba(8, 12, 22, 0.90); backdrop-filter: var(--backdrop);
+            border: 1px solid rgba(0, 242, 254, 0.25); padding: 10px 14px; border-radius: 18px;
+            box-shadow: 0 10px 35px rgba(0,0,0,0.85);
+            display: flex; flex-direction: column; gap: 8px;
+        }
+
+        .controls-row {
+            display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;
+        }
+
+        .action-btn {
+            flex: 1; min-width: 75px; background: rgba(255, 255, 255, 0.05); 
+            border: 1px solid rgba(255,255,255,0.12); color: white;
+            padding: 7px 10px; border-radius: 10px; font-size: 11px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .action-btn:hover { background: rgba(255, 255, 255, 0.15); }
+        .action-btn.play { border-color: var(--accent-green); color: var(--accent-green); background: rgba(0, 255, 136, 0.12); }
+        .action-btn.pause { border-color: var(--accent-gold); color: var(--accent-gold); background: rgba(255, 215, 0, 0.12); }
+        .action-btn.reset { border-color: var(--accent-red); color: var(--accent-red); background: rgba(255, 51, 102, 0.12); }
+
+        .toggle-btn {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.15);
+            color: var(--text-muted); padding: 5px 10px; border-radius: 8px; font-size: 10px; font-weight: 600;
+            cursor: pointer; transition: 0.3s; flex: 1; text-align: center;
+        }
+        .toggle-btn.active { background: rgba(0, 242, 254, 0.2); border-color: var(--accent-blue); color: var(--accent-blue); box-shadow: 0 0 10px rgba(0, 242, 254, 0.3); }
+
+        .speed-selector {
+            display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-muted); font-weight: 600;
+        }
+        .speed-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-main); padding: 3px 6px; border-radius: 5px; font-size: 10px; cursor: pointer;
+        }
+        .speed-btn.active { background: var(--accent-blue); color: #000; font-weight: bold; }
+
+        #mini-hud {
+            pointer-events: auto;
+            background: rgba(8, 12, 22, 0.90); backdrop-filter: var(--backdrop);
+            border: 1px solid rgba(0, 242, 254, 0.3); border-radius: 14px;
+            padding: 8px 14px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.7);
+        }
+        .hud-item { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+        .hud-label { font-size: 8px; color: var(--text-muted); text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;}
+        .hud-val { font-size: 13px; font-weight: 900; font-family: monospace; }
+
+        #hud-status-badge {
+            font-size: 10px; font-weight: 900; color: white;
+            padding: 4px 10px; border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);
+            letter-spacing: 0.5px; transition: 0.3s; text-align: center;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        #bottom-sheet { 
+            position: fixed; bottom: 0; left: 0; width: 100%; 
+            background: rgba(8, 12, 22, 0.95); backdrop-filter: var(--backdrop); 
+            border-top-left-radius: 24px; border-top-right-radius: 24px; 
+            border-top: 1px solid rgba(0, 242, 254, 0.3); 
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.9); 
+            z-index: 200; display: flex; flex-direction: column; 
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+            transform: translateY(0); 
+            max-height: 88vh; 
+        }
+
+        #bottom-sheet.collapsed { transform: translateY(calc(100% - 85px)); }
+
+        #drag-area { 
+            width: 100%; padding: 10px 0 6px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            cursor: grab; touch-action: none; user-select: none;
+        }
+
+        .drag-handle { width: 44px; height: 4px; background: rgba(0, 242, 254, 0.5); border-radius: 10px; margin-bottom: 4px; }
+        .sheet-hint { font-size: 10px; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; display: flex; align-items: center; gap: 4px; }
+
+        .path-selector { display: flex; gap: 8px; padding: 0 16px 10px 16px; overflow-x: auto; scrollbar-width: none; }
+        .path-selector::-webkit-scrollbar { display: none; }
+        
+        .path-btn { 
+            flex: 1; min-width: 110px; background: rgba(0,0,0,0.5); 
+            border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); 
+            padding: 7px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; 
+            cursor: pointer; transition: 0.3s; white-space: nowrap; text-align: center; 
+        }
+        .path-btn.active[data-scenario="optimal"] { background: rgba(0, 255, 136, 0.18); border-color: var(--accent-green); color: var(--accent-green); box-shadow: 0 0 12px rgba(0, 255, 136, 0.3); }
+        .path-btn.active[data-scenario="decelerate"] { background: rgba(255, 51, 102, 0.18); border-color: var(--accent-red); color: var(--accent-red); box-shadow: 0 0 12px rgba(255, 51, 102, 0.3); }
+        .path-btn.active[data-scenario="close"] { background: rgba(255, 215, 0, 0.18); border-color: var(--accent-gold); color: var(--accent-gold); box-shadow: 0 0 12px rgba(255, 215, 0, 0.3); }
+        .path-btn.active[data-scenario="deflection"] { background: rgba(176, 38, 255, 0.18); border-color: var(--accent-purple); color: #d48cff; box-shadow: 0 0 12px rgba(176, 38, 255, 0.3); }
+
+        .sheet-content { padding: 0 16px 20px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; touch-action: pan-y; }
+
+        .card { background: var(--card-bg); border-radius: 16px; padding: 14px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 8px; }
+        .card-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-blue); margin: 0; display: flex; align-items: center; justify-content: space-between; }
+
+        .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 2px; }
+        @media (min-width: 600px) { .info-grid { grid-template-columns: repeat(4, 1fr); } }
+
+        .info-item { display: flex; flex-direction: column; gap: 2px; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.04); }
+        .info-label { font-size: 8px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;}
+        .info-value { font-size: 13px; font-weight: 700; color: var(--text-main); font-family: monospace; }
+
+        .speed-bar-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 3px; }
+        .speed-bar-fill { height: 100%; width: 20%; background: linear-gradient(90deg, #00f2fe, #00ff88); transition: width 0.15s ease-out, background 0.3s; border-radius: 4px; }
+        .info-desc { font-size: 11px; line-height: 1.4; color: #cbd5e1; margin-top: 2px; }
+
+        .slider-group { display: flex; flex-direction: column; gap: 4px; background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); }
+        .slider-label-row { display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin: 2px 0; touch-action: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 5px; cursor: pointer; background: rgba(255,255,255,0.15); border-radius: 5px; }
+        input[type=range]::-webkit-slider-thumb { height: 16px; width: 16px; border-radius: 50%; background: #00f2fe; cursor: pointer; -webkit-appearance: none; margin-top: -5px; box-shadow: 0 0 10px rgba(0, 242, 254, 0.8); border: 2px solid #fff; }
+
+        .vector-legend { display: flex; gap: 10px; font-size: 9px; font-weight: 700; flex-wrap: wrap; margin-top: 2px; }
+        .legend-item { display: flex; align-items: center; gap: 4px; }
+        .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    </style>
+</head>
+<body>
+
+    <!-- Sol Üst Geri Butonu -->
+    <button id="back-btn" class="back-btn" aria-label="Geri">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+    </button>
+
+    <!-- Ana Ekran Onay Modalı -->
+    <div id="home-modal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 data-i18n="modal_exit_title">Ana Ekrana Dön</h3>
+            <p data-i18n="modal_exit_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-actions">
+                <button id="modal-cancel" class="btn-cancel" data-i18n="modal_cancel">İptal</button>
+                <button id="modal-confirm" class="btn-confirm" data-i18n="modal_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+    
+    <div id="top-container">
+        <div id="top-bar">
+            <div class="controls-row">
+                <button class="action-btn play" id="btn-play">▶ <span data-i18n="gs_btn_play">Başlat</span></button>
+                <button class="action-btn pause" id="btn-pause">⏸ <span data-i18n="gs_btn_pause">Duraklat</span></button>
+                <button class="action-btn reset" id="btn-reset">🔄 <span data-i18n="gs_btn_reset">Sıfırla</span></button>
+                
+                <div class="speed-selector">
+                    <span data-i18n="gs_speed">Hız:</span>
+                    <button class="speed-btn" data-speed="0.25">0.25x</button>
+                    <button class="speed-btn active" data-speed="1">1x</button>
+                    <button class="speed-btn" data-speed="2">2x</button>
+                    <button class="speed-btn" data-speed="5">5x</button>
+                </div>
+            </div>
+            <div class="controls-row" style="margin-top: 2px;">
+                <button class="toggle-btn active" id="btn-vectors">🏹 <span data-i18n="gs_btn_vectors">Vektör</span></button>
+                <button class="toggle-btn active" id="btn-orbit">🪐 <span data-i18n="gs_btn_orbit">Yörünge</span></button>
+                <button class="toggle-btn" id="btn-cam-planet">🎥 <span data-i18n="gs_btn_cam_planet">Gezegen</span></button>
+                <button class="toggle-btn" id="btn-cam-ship">🚀 <span data-i18n="gs_btn_cam_ship">Keşif Gemisi</span></button>
+            </div>
+        </div>
+
+        <div id="mini-hud">
+            <div class="hud-item">
+                <span class="hud-label" data-i18n="gs_hud_speed">Anlık Hız</span>
+                <span class="hud-val" id="hud-speed" style="color: var(--accent-green);">0.00 km/s</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label" data-i18n="gs_hud_acceleration">Yüzdesel Hızlanma</span>
+                <span class="hud-val" id="hud-pct" style="color: var(--accent-green);">%0.0</span>
+            </div>
+            <div id="hud-status-badge" data-i18n="gs_status_ready">HAZIR</div>
+        </div>
+    </div>
+
+    <div id="bottom-sheet" class="collapsed">
+        <div id="drag-area">
+            <div class="drag-handle"></div>
+            <span class="sheet-hint"><span id="drag-icon">▲</span> <span data-i18n="gs_sheet_hint">TELEMETRİ & UÇUŞ KONTROLLERİ</span></span>
+        </div>
+        
+        <div class="path-selector">
+            <button class="path-btn active" data-scenario="optimal">🚀 <span data-i18n="gs_scenario_optimal">Voyager Keşif Yolu</span></button>
+            <button class="path-btn" data-scenario="decelerate">🛑 <span data-i18n="gs_scenario_decelerate">Retrograde (Frenleme)</span></button>
+            <button class="path-btn" data-scenario="close">⚠️ <span data-i18n="gs_scenario_close">Kritik Yakın Geçiş</span></button>
+            <button class="path-btn" data-scenario="deflection">📐 <span data-i18n="gs_scenario_deflection">Saf Yön Bükme</span></button>
+        </div>
+        
+        <div class="sheet-content">
+            <div class="card">
+                <div class="card-title">
+                    <span style="color: var(--accent-gold);">📊 <span data-i18n="gs_telemetry_title">Fizik & Uçuş Telemetrisi</span></span>
+                    <span id="status-badge" data-i18n="gs_status_ready" style="font-size: 10px; color: white; border: 1px solid rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 10px; background: #333; font-weight: bold;">HAZIR</span>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-item" style="grid-column: span 2;">
+                        <div style="display: flex; justify-content: space-between; font-size:9px;">
+                            <span class="info-label" data-i18n="gs_label_speed">Güneş Merkezli Anlık Hız (V_s)</span>
+                            <span id="val-speed" style="color: var(--accent-green); font-weight:bold;">0.00 km/s</span>
+                        </div>
+                        <div class="speed-bar-bg"><div id="speed-bar-fill" class="speed-bar-fill"></div></div>
+                    </div>
+                    
+                    <div class="info-item"><span class="info-label" data-i18n="gs_label_delta_v">ΔV (Fark)</span><span class="info-value" id="val-deltav" style="color: var(--accent-green);">+0.00 km/s</span></div>
+                    <div class="info-item"><span class="info-label" data-i18n="gs_label_percent_change">Yüzdesel Değişim</span><span class="info-value" id="val-pct" style="color: var(--accent-green);">%0.00</span></div>
+
+                    <div class="info-item"><span class="info-label" data-i18n="gs_label_initial_speed">Başlangıç (V_ilk)</span><span class="info-value" id="val-vinit" style="color: var(--accent-gold);">0.00 km/s</span></div>
+                    <div class="info-item"><span class="info-label" data-i18n="gs_label_max_speed">Azami Hız (V_max)</span><span class="info-value" id="val-vmax" style="color: var(--accent-blue);">0.00 km/s</span></div>
+                    <div class="info-item"><span class="info-label" data-i18n="gs_label_distance">Gezegene Uzaklık</span><span class="info-value" id="val-dist">0 km</span></div>
+                    <div class="info-item"><span class="info-label" data-i18n="gs_label_periapsis">En Yakın Yaklaşma (r_p)</span><span class="info-value" id="val-actual-peri" style="color: var(--accent-blue);">0 km</span></div>
+
+                    <div class="info-item"><span class="info-label" data-i18n="gs_label_relative_speed">Bağıl Hız (V_∞)</span><span class="info-value" id="val-vinf" style="color: var(--accent-purple);">0.00 km/s</span></div>
+                    <div class="info-item"><span class="info-label" data-i18n="gs_label_deflection">Sapma Açısı (δ)</span><span class="info-value" id="val-deflection" style="color: var(--accent-gold);">0.0°</span></div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 2px;">
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <span style="color: var(--text-muted);" data-i18n="gs_label_target_distance">Hedef Yakınlık (r_p)</span>
+                            <span id="val-impact-text" style="color: var(--accent-blue);">120 km</span>
+                        </div>
+                        <input type="range" id="slider-impact" min="65" max="300" step="5" value="120">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <span style="color: var(--text-muted);" data-i18n="gs_label_entry_speed">Giriş Hızı (V_∞)</span>
+                            <span id="val-initspeed-text" style="color: var(--accent-gold);">15.0 km/s</span>
+                        </div>
+                        <input type="range" id="slider-initspeed" min="5" max="35" step="0.5" value="15">
+                    </div>
+                </div>
+
+                <div class="vector-legend">
+                    <div class="legend-item"><span class="legend-dot" style="background: #00ff88;"></span> <span data-i18n="gs_legend_ship_speed">Araç Hızı (V_s)</span></div>
+                    <div class="legend-item"><span class="legend-dot" style="background: #00f2fe;"></span> <span data-i18n="gs_legend_planet_speed">Gezegen Hızı (V_p)</span></div>
+                    <div class="legend-item"><span class="legend-dot" style="background: #ff3366;"></span> <span data-i18n="gs_legend_gravity">Kütleçekim Kuvveti</span></div>
+                </div>
+
+                <div class="info-item" style="background: rgba(0,0,0,0.5);">
+                    <span class="info-label">📜 <span data-i18n="gs_event_analysis">Olay Analizi</span></span>
+                    <span class="info-desc" id="val-desc">Araç gezegenin arkasından yaklaşır. Hiperbolik yörünge izlenir. Gezegenin momentumundan çalınarak Güneş sistemine göre net hız kazanılır.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script src="lang.js"></script>
+<script>
+    // --- GERİ BUTONU VE MODAL MANTIĞI ---
+    const backBtn = document.getElementById('back-btn');
+    const homeModal = document.getElementById('home-modal');
+    const modalCancel = document.getElementById('modal-cancel');
+    const modalConfirm = document.getElementById('modal-confirm');
+
+    backBtn.addEventListener('click', () => {
+        homeModal.classList.add('active');
+    });
+
+    modalCancel.addEventListener('click', () => {
+        homeModal.classList.remove('active');
+    });
+
+    modalConfirm.addEventListener('click', () => {
+        window.location.href = 'index.html';
+    });
+
+    // --- THREE.JS KURULUMU ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene(); 
+    scene.background = new THREE.Color(0x000004);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 50000);
+    camera.position.set(0, 1500, 500);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight); 
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor = 0.05;
+    controls.maxDistance = 5000; controls.minDistance = 15;
+
+    const clock = new THREE.Clock();
+
+    function createCircleTexture() {
+        const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+        const x = c.getContext('2d'); 
+        const grad = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.8)');
+        grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        x.fillStyle = grad; x.fillRect(0, 0, 64, 64);
+        return new THREE.CanvasTexture(c);
+    }
+
+    const circleTexture = createCircleTexture();
+    
+    // --- DERİN UZAY ARKA PLANI (GERÇEKÇİ MİNİMALİST) ---
+    const starCount = 6500;
+    const bgGeo = new THREE.BufferGeometry();
+    const bgPos = new Float32Array(starCount * 3);
+    const bgColors = new Float32Array(starCount * 3);
+
+    const starTypes = [
+        new THREE.Color(0x9bb0ff),
+        new THREE.Color(0xffffff),
+        new THREE.Color(0xffe4ce),
+        new THREE.Color(0xffc48e)
+    ];
+
+    for (let i = 0; i < starCount; i++) {
+        bgPos[i*3] = (Math.random() - 0.5) * 20000;
+        bgPos[i*3+1] = (Math.random() - 0.5) * 20000;
+        bgPos[i*3+2] = (Math.random() - 0.5) * 20000;
+
+        const rand = Math.random();
+        let color;
+        if (rand > 0.95) color = starTypes[0];
+        else if (rand > 0.70) color = starTypes[3];
+        else if (rand > 0.40) color = starTypes[2];
+        else color = starTypes[1];
+
+        const isBright = Math.random() > 0.97;
+        const brightness = isBright ? (0.8 + Math.random() * 0.2) : (0.15 + Math.random() * 0.35);
+        
+        bgColors[i*3] = color.r * brightness;
+        bgColors[i*3+1] = color.g * brightness;
+        bgColors[i*3+2] = color.b * brightness;
+    }
+
+    bgGeo.setAttribute('position', new THREE.BufferAttribute(bgPos, 3));
+    bgGeo.setAttribute('color', new THREE.BufferAttribute(bgColors, 3));
+
+    const starMat = new THREE.PointsMaterial({ 
+        size: 1.5,
+        vertexColors: true, 
+        map: circleTexture, 
+        transparent: true, 
+        opacity: 0.9, 
+        depthWrite: false,
+        sizeAttenuation: false
+    });
+
+    const starPoints = new THREE.Points(bgGeo, starMat);
+    scene.add(starPoints);
+
+    const shootingStarGeo = new THREE.BufferGeometry();
+    const shootingStarPos = new Float32Array(6);
+    shootingStarGeo.setAttribute('position', new THREE.BufferAttribute(shootingStarPos, 3));
+    const shootingStarMat = new THREE.LineBasicMaterial({
+        color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, linewidth: 1
+    });
+    const shootingStar = new THREE.Line(shootingStarGeo, shootingStarMat);
+    scene.add(shootingStar);
+
+    let shootingStarActive = false;
+    let shootingStarProgress = 0;
+    let meteorStart = new THREE.Vector3(), meteorEnd = new THREE.Vector3();
+
+    function triggerShootingStar() {
+        shootingStarActive = true;
+        shootingStarProgress = 0;
+        meteorStart.set(
+            (Math.random() - 0.5) * 4500,
+            (Math.random() - 0.5) * 2000 + 400,
+            (Math.random() - 0.5) * 4500
+        );
+        const offset = new THREE.Vector3(
+            (Math.random() - 0.5) * 1600,
+            -Math.random() * 800 - 300,
+            (Math.random() - 0.5) * 1600
+        );
+        meteorEnd.copy(meteorStart).add(offset);
+    }
+
+    // --- GELİŞMİŞ GÜNEŞ SHADER VE YAPISI ---
+    const sunPos = new THREE.Vector3(-1800, 0, 0); 
+    const orbitRadius = 1800; 
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+    const sunLight = new THREE.PointLight(0xfff5ea, 3.2, 20000); 
+    sunLight.position.copy(sunPos); scene.add(sunLight);
+
+    const sunGroup = new THREE.Group();
+    sunGroup.position.copy(sunPos);
+
+    const sunUniforms = { uTime: { value: 0 } };
+
+    const sunCoreMaterial = new THREE.ShaderMaterial({
+        uniforms: sunUniforms,
+        vertexShader: `
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            void main() {
+                vUv = uv;
+                vNormal = normalize(normalMatrix * normal);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float uTime;
+            varying vec2 vUv;
+            varying vec3 vNormal;
+
+            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+            float snoise(vec2 v){
+                const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+                vec2 i  = floor(v + dot(v, C.yy) );
+                vec2 x0 = v -   i + dot(i, C.xx);
+                vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+                vec4 x12 = x0.xyxy + C.xxzz;
+                x12.xy -= i1;
+                i = mod289(i);
+                vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 )) + i.x + vec3(0.0, i1.x, 1.0 ));
+                vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+                m = m*m; m = m*m;
+                vec3 x = 2.0 * fract(p * C.www) - 1.0;
+                vec3 h = abs(x) - 0.5;
+                vec3 ox = floor(x + 0.5);
+                vec3 a0 = x - ox;
+                m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+                vec3 g;
+                g.x  = a0.x  * x0.x  + h.x  * x0.y;
+                g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+                return 130.0 * dot(m, g);
+            }
+
+            void main() {
+                float n1 = snoise(vUv * 12.0 + vec2(uTime * 0.1, uTime * 0.08));
+                float n2 = snoise(vUv * 24.0 - vec2(uTime * 0.15, uTime * 0.18));
+                float noise = n1 * 0.6 + n2 * 0.4;
+
+                vec3 colCoreWhite = vec3(1.0, 1.0, 0.92);
+                vec3 colYellow = vec3(1.0, 0.82, 0.2);
+                vec3 colDarkOrange = vec3(0.95, 0.38, 0.02);
+
+                vec3 baseColor = mix(colYellow, colCoreWhite, smoothstep(-0.2, 0.7, noise));
+                baseColor = mix(colDarkOrange, baseColor, smoothstep(-0.7, 0.2, noise));
+
+                float fresnel = pow(1.0 - max(0.0, dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.2);
+                vec3 rimColor = vec3(1.0, 0.25, 0.0) * fresnel * 2.2;
+
+                gl_FragColor = vec4(baseColor + rimColor, 1.0);
+            }
+        `
+    });
+
+    const sunMesh = new THREE.Mesh(new THREE.SphereGeometry(180, 64, 64), sunCoreMaterial);
+
+    const sunAtmosphereMaterial = new THREE.ShaderMaterial({
+        uniforms: sunUniforms,
+        vertexShader: `
+            varying vec3 vNormal;
+            void main() {
+                vNormal = normalize(normalMatrix * normal);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            varying vec3 vNormal;
+            uniform float uTime;
+            void main() {
+                float intensity = pow(0.72 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 1.5);
+                float pulse = 0.85 + 0.15 * sin(uTime * 2.5);
+                vec3 coronaColor = mix(vec3(1.0, 0.18, 0.0), vec3(1.0, 0.5, 0.0), intensity);
+                gl_FragColor = vec4(coronaColor, intensity * pulse * 0.92);
+            }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.BackSide,
+        depthWrite: false
+    });
+
+    const sunAtmosphereMesh = new THREE.Mesh(new THREE.SphereGeometry(195, 64, 64), sunAtmosphereMaterial);
+
+    const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({ 
+        map: circleTexture, color: 0xff5500, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false 
+    }));
+    sunGlow.scale.set(900, 900, 1);
+
+    sunGroup.add(sunMesh, sunAtmosphereMesh, sunGlow);
+    scene.add(sunGroup);
+
+    // --- GEZEGEN VE BULUT SİSTEMİ ---
+    const mainGroup = new THREE.Group(); scene.add(mainGroup);
+
+    function createPlanetTexture() {
+        const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+        const ctx = c.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 512);
+        grad.addColorStop(0.0, '#051329'); grad.addColorStop(0.2, '#0d47a1'); grad.addColorStop(0.4, '#00bcd4');
+        grad.addColorStop(0.55, '#0288d1'); grad.addColorStop(0.8, '#1565c0'); grad.addColorStop(1.0, '#000b18');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, 1024, 512);
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+        for (let i = 0; i < 25; i++) {
+            const y = Math.random() * 512; const h = Math.random() * 35 + 6;
+            ctx.beginPath(); ctx.ellipse(512, y, 512, h, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        return new THREE.CanvasTexture(c);
+    }
+
+    function createCloudTexture() {
+        const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = 'rgba(0,0,0,0)'; ctx.fillRect(0, 0, 1024, 512);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        for (let i = 0; i < 40; i++) {
+            const x = Math.random() * 1024; const y = Math.random() * 512;
+            const rx = 50 + Math.random() * 120; const ry = 10 + Math.random() * 30;
+            ctx.beginPath(); ctx.ellipse(x, y, rx, ry, Math.random()*0.5, 0, Math.PI * 2); ctx.fill();
+        }
+        return new THREE.CanvasTexture(c);
+    }
+
+    const planetRadius = 55;
+    const planetGroup = new THREE.Group();
+    
+    const planetMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(planetRadius, 64, 64), 
+        new THREE.MeshStandardMaterial({ map: createPlanetTexture(), roughness: 0.3, metalness: 0.2 })
+    );
+
+    const cloudMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(planetRadius * 1.02, 64, 64),
+        new THREE.MeshStandardMaterial({
+            map: createCloudTexture(), transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending,
+            depthWrite: false
+        })
+    );
+
+    const planetAtmos = new THREE.Mesh(
+        new THREE.SphereGeometry(planetRadius * 1.15, 64, 64), 
+        new THREE.MeshBasicMaterial({ color: 0x00f2fe, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, side: THREE.BackSide, depthWrite: false })
+    );
+
+    const planetRing = new THREE.Mesh(
+        new THREE.RingGeometry(planetRadius * 1.35, planetRadius * 1.95, 64), 
+        new THREE.MeshStandardMaterial({ color: 0x00f2fe, transparent: true, opacity: 0.35, side: THREE.DoubleSide, roughness: 0.5, depthWrite: false })
+    );
+    planetRing.rotation.x = Math.PI / 2.2;
+
+    planetGroup.add(planetMesh, cloudMesh, planetAtmos, planetRing);
+    mainGroup.add(planetGroup);
+
+    const orbitGeo = new THREE.BufferGeometry();
+    const orbitPts = [];
+    for (let a = 0; a <= Math.PI * 2; a += 0.02) orbitPts.push(new THREE.Vector3(sunPos.x + Math.cos(a)*orbitRadius, 0, sunPos.z + Math.sin(a)*orbitRadius));
+    orbitGeo.setFromPoints(orbitPts);
+    const orbitLine = new THREE.Line(orbitGeo, new THREE.LineDashedMaterial({ color: 0x00f2fe, dashSize: 15, gapSize: 10, transparent: true, opacity: 0.35, depthWrite: false }));
+    orbitLine.computeLineDistances();
+    orbitLine.frustumCulled = false;
+    scene.add(orbitLine);
+
+    // --- UZAY ARACI (VOYAGER) ---
+    function createDetailedSpaceship() {
+        const ship = new THREE.Group();
+
+        const busGeo = new THREE.CylinderGeometry(3.5, 3.5, 9, 8);
+        const busMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, metalness: 0.85, roughness: 0.25, flatShading: true });
+        const bus = new THREE.Mesh(busGeo, busMat);
+        bus.rotation.x = Math.PI / 2; ship.add(bus);
+
+        const instrumentGeo = new THREE.BoxGeometry(4.5, 4.5, 4);
+        const instrumentMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.5, roughness: 0.5 });
+        const instruments = new THREE.Mesh(instrumentGeo, instrumentMat);
+        instruments.position.z = -2; ship.add(instruments);
+
+        const dishGeo = new THREE.ConeGeometry(11, 2.8, 32, 1, true);
+        const dishMat = new THREE.MeshStandardMaterial({ color: 0xf8f8f8, metalness: 0.2, roughness: 0.3, side: THREE.DoubleSide });
+        const dish = new THREE.Mesh(dishGeo, dishMat);
+        dish.rotation.x = -Math.PI / 2; dish.position.z = 6; ship.add(dish);
+
+        const feedGeo = new THREE.CylinderGeometry(0.3, 0.3, 5, 8);
+        const feedMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.9, roughness: 0.1 });
+        const feed = new THREE.Mesh(feedGeo, feedMat);
+        feed.rotation.x = Math.PI / 2; feed.position.z = 8.5; ship.add(feed);
+
+        const panelGroup = new THREE.Group();
+        const panelGeo = new THREE.BoxGeometry(26, 0.3, 5);
+        const panelMat = new THREE.MeshStandardMaterial({ color: 0x0a2540, metalness: 0.9, roughness: 0.1 });
+        const panels = new THREE.Mesh(panelGeo, panelMat);
+        const gridGeo = new THREE.BoxGeometry(26.2, 0.35, 0.2);
+        const gridMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe });
+        const grid1 = new THREE.Mesh(gridGeo, gridMat); grid1.position.z = 1.5;
+        const grid2 = new THREE.Mesh(gridGeo, gridMat); grid2.position.z = -1.5;
+        panelGroup.add(panels, grid1, grid2); panelGroup.position.set(0, 0, -1); ship.add(panelGroup);
+
+        const boomGeo = new THREE.CylinderGeometry(0.2, 0.2, 22, 8);
+        const boomMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.8 });
+        const boom = new THREE.Mesh(boomGeo, boomMat);
+        boom.rotation.z = Math.PI / 3.5; boom.position.set(0, 0, -3); ship.add(boom);
+
+        const rtgGeo = new THREE.CylinderGeometry(1.2, 1.2, 4, 12);
+        const rtgMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8, roughness: 0.3 });
+        const rtg = new THREE.Mesh(rtgGeo, rtgMat);
+        rtg.position.set(-8.5, 5, -3); ship.add(rtg);
+
+        const engineGeo = new THREE.ConeGeometry(2.2, 4.5, 16, 1, true);
+        const engineMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.95, roughness: 0.2, side: THREE.DoubleSide });
+        const engine = new THREE.Mesh(engineGeo, engineMat);
+        engine.rotation.x = Math.PI / 2; engine.position.z = -6.5; ship.add(engine);
+
+        const plumeGeo = new THREE.ConeGeometry(1.8, 12, 16, 1, true);
+        const plumeMat = new THREE.MeshBasicMaterial({ 
+            color: 0x00ff88, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false 
+        });
+        const plume = new THREE.Mesh(plumeGeo, plumeMat);
+        plume.rotation.x = -Math.PI / 2; plume.position.z = -12; plume.name = "enginePlume"; ship.add(plume);
+
+        const engineGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: circleTexture, color: 0x00f2fe, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+        engineGlow.scale.set(16, 16, 1); engineGlow.position.z = -7; ship.add(engineGlow);
+
+        const navLightGeo = new THREE.SphereGeometry(0.5, 8, 8);
+        const redNavMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+        const greenNavMat = new THREE.MeshBasicMaterial({ color: 0x00ff66 });
+        const leftNav = new THREE.Mesh(navLightGeo, redNavMat); leftNav.position.set(-13, 0, -1); leftNav.name = "navLeft";
+        const rightNav = new THREE.Mesh(navLightGeo, greenNavMat); rightNav.position.set(13, 0, -1); rightNav.name = "navRight";
+        ship.add(leftNav, rightNav);
+
+        ship.scale.set(1.2, 1.2, 1.2);
+        return ship;
+    }
+
+    const shipGroup = createDetailedSpaceship();
+    mainGroup.add(shipGroup);
+
+    // --- YÖRÜNGE İZİ (TRAIL) ---
+    const MAX_TRAIL = 15000;
+    const trailPositions = new Float32Array(MAX_TRAIL * 3);
+    const trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+
+    const trailMat = new THREE.LineBasicMaterial({ 
+        color: 0xffd700, 
+        transparent: true, 
+        opacity: 0.95,
+        depthWrite: false,
+        depthTest: false
+    });
+    
+    const trailLine = new THREE.Line(trailGeo, trailMat);
+    trailLine.renderOrder = 999;
+    trailLine.frustumCulled = false;
+    mainGroup.add(trailLine);
+    let trailCount = 0;
+
+    // VEKTÖRLER
+    const velArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 60, 0x00ff88, 12, 6);
+    const pVelArrow = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(), 60, 0x00f2fe, 12, 6);
+    const gravityArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 60, 0xff3366, 12, 6);
+    velArrow.frustumCulled = false; pVelArrow.frustumCulled = false; gravityArrow.frustumCulled = false;
+    
+    velArrow.line.material.depthTest = false; velArrow.cone.material.depthTest = false;
+    pVelArrow.line.material.depthTest = false; pVelArrow.cone.material.depthTest = false;
+    gravityArrow.line.material.depthTest = false; gravityArrow.cone.material.depthTest = false;
+
+    mainGroup.add(velArrow, pVelArrow, gravityArrow);
+
+    // --- FİZİK VE SİMÜLASYON DEĞİŞKENLERİ ---
+    let simRunning = false;
+    let simSpeedMultiplier = 1.0;
+    let showVectors = true;
+    let cameraFocus = 'none';
+
+    let GM = 150000; 
+    let currentPlanetAngle = 0;
+    let currentPlanetSpeed = 18;
+    let currentOmega = 0;
+
+    let planetPos = new THREE.Vector3();
+    let planetVel = new THREE.Vector3();
+    let shipPos = new THREE.Vector3();
+    let shipVel = new THREE.Vector3();
+    
+    let initialShipSpeed = 15.0;
+    let maxShipSpeed = 15.0;
+    let actualPeriapsis = Infinity;
+    let theoreticalVinf = 0;
+    let theoreticalDeflection = 0;
+
+    function getPlanetPos(angle) { return new THREE.Vector3(sunPos.x + Math.cos(angle) * orbitRadius, 0, sunPos.z + Math.sin(angle) * orbitRadius); }
+    function getPlanetVel(angle, speed) { return new THREE.Vector3(-Math.sin(angle) * speed, 0, Math.cos(angle) * speed); }
+
+    function calculateAstroPhysicsInit(scenarioKey) {
+        const v_inf = parseFloat(document.getElementById('slider-initspeed').value);
+        let rp_target = parseFloat(document.getElementById('slider-impact').value);
+        if (scenarioKey === 'close') rp_target = 65;
+
+        let pSpeed = (scenarioKey === 'deflection') ? 12 : 18;
+        const pInitAngle = 0;
+        const planet_init_pos = getPlanetPos(pInitAngle);
+        const vp_init = getPlanetVel(pInitAngle, pSpeed);
+
+        const e_mag = 1 + (rp_target * v_inf * v_inf) / GM; 
+        const p = rp_target * (1 + e_mag);
+        const b_mag = rp_target * Math.sqrt(1 + (2 * GM) / (rp_target * v_inf * v_inf));
+
+        theoreticalVinf = v_inf;
+        theoreticalDeflection = 2 * Math.asin(1 / e_mag) * (180 / Math.PI);
+
+        let v_inf_vec = new THREE.Vector3();
+        let b_vec = new THREE.Vector3();
+        
+        if (scenarioKey === 'optimal' || scenarioKey === 'close') {
+            v_inf_vec.set(v_inf, 0, 0); b_vec.set(0, 0, -b_mag);
+        } else if (scenarioKey === 'decelerate') {
+            v_inf_vec.set(-v_inf, 0, 0); b_vec.set(0, 0, b_mag);      
+        } else if (scenarioKey === 'deflection') {
+            v_inf_vec.set(0, 0, v_inf); b_vec.set(b_mag, 0, 0);
+        }
+
+        const e_vec = b_vec.clone().multiplyScalar((v_inf * v_inf) / GM).add(v_inf_vec.clone().normalize());
+        const x_orb = e_vec.clone().normalize();
+        const z_orb = new THREE.Vector3().crossVectors(b_vec, v_inf_vec).normalize();
+        const y_orb = new THREE.Vector3().crossVectors(z_orb, x_orb).normalize();
+
+        const r_start = Math.max(900, b_mag * 3.5);
+        const theta_start = -Math.acos(Math.max(-1, Math.min(1, ((p / r_start) - 1) / e_mag)));
+
+        const r_orb = new THREE.Vector3(r_start * Math.cos(theta_start), r_start * Math.sin(theta_start), 0);
+        const v_factor = Math.sqrt(GM / p);
+        const v_orb = new THREE.Vector3(v_factor * (-Math.sin(theta_start)), v_factor * (e_mag + Math.cos(theta_start)), 0);
+
+        const r_rel_world = new THREE.Vector3(
+            r_orb.x * x_orb.x + r_orb.y * y_orb.x + r_orb.z * z_orb.x,
+            r_orb.x * x_orb.y + r_orb.y * y_orb.y + r_orb.z * z_orb.y,
+            r_orb.x * x_orb.z + r_orb.y * y_orb.z + r_orb.z * z_orb.z
+        );
+
+        const v_rel_world = new THREE.Vector3(
+            v_orb.x * x_orb.x + v_orb.y * y_orb.x + v_orb.z * z_orb.x,
+            v_orb.x * x_orb.y + v_orb.y * y_orb.y + v_orb.z * z_orb.y,
+            v_orb.x * x_orb.z + v_orb.y * y_orb.z + v_orb.z * z_orb.z
+        );
+
+        return { 
+            shipPos: planet_init_pos.clone().add(r_rel_world), 
+            shipVel: vp_init.clone().add(v_rel_world), 
+            angle: pInitAngle, 
+            pSpeed: pSpeed 
+        };
+    }
+
+    const scenarios = {
+        'optimal': { descKey: 'gs_desc_optimal' },
+        'decelerate': { descKey: 'gs_desc_decelerate' },
+        'close': { descKey: 'gs_desc_close' },
+        'deflection': { descKey: 'gs_desc_deflection' }
+    };
+
+    let currentScenarioKey = 'optimal';
+
+    window.onLanguageChange = () => {
+        document.getElementById('val-desc').textContent = t(scenarios[currentScenarioKey].descKey);
+    };
+
+    function resetSimulation() {
+        simRunning = false;
+        trailCount = 0;
+        trailGeo.setDrawRange(0, 0);
+        actualPeriapsis = Infinity;
+
+        const initData = calculateAstroPhysicsInit(currentScenarioKey);
+        currentPlanetSpeed = initData.pSpeed;
+        currentOmega = currentPlanetSpeed / orbitRadius;
+        currentPlanetAngle = initData.angle;
+
+        planetPos.copy(getPlanetPos(currentPlanetAngle));
+        planetVel.copy(getPlanetVel(currentPlanetAngle, currentPlanetSpeed));
+        shipPos.copy(initData.shipPos);
+        shipVel.copy(initData.shipVel);
+        
+        initialShipSpeed = shipVel.length();
+        maxShipSpeed = initialShipSpeed;
+
+        planetGroup.position.copy(planetPos);
+        shipGroup.position.copy(shipPos);
+
+        updateUI(true);
+    }
+
+    // --- TELEMETRİ ARAYÜZÜ ---
+    const uiSpeed = document.getElementById('val-speed');
+    const uiDelta = document.getElementById('val-deltav');
+    const uiPct = document.getElementById('val-pct');
+    const uiVInit = document.getElementById('val-vinit');
+    const uiVMax = document.getElementById('val-vmax');
+    const uiDist = document.getElementById('val-dist');
+    const uiBadge = document.getElementById('status-badge');
+    const speedBar = document.getElementById('speed-bar-fill');
+    const uiVinf = document.getElementById('val-vinf');
+    const uiDeflection = document.getElementById('val-deflection');
+    const uiActualPeri = document.getElementById('val-actual-peri');
+
+    const miniHudSpeed = document.getElementById('hud-speed');
+    const miniHudPct = document.getElementById('hud-pct');
+    const miniHudBadge = document.getElementById('hud-status-badge');
+
+    function updateUI(isReset = false) {
+        const currentSpeed = shipVel.length();
+        const dist = shipPos.distanceTo(planetPos);
+        const deltaV = currentSpeed - initialShipSpeed;
+        const pctChange = (deltaV / initialShipSpeed) * 100;
+
+        if (currentSpeed > maxShipSpeed) maxShipSpeed = currentSpeed;
+        if (dist < actualPeriapsis) actualPeriapsis = dist;
+
+        const sign = deltaV >= 0 ? "+" : "";
+        const deltaText = sign + deltaV.toFixed(2) + " km/s";
+        const pctText = sign + pctChange.toFixed(1) + "%";
+        
+        const isAccelerating = deltaV >= 0.05;
+        const isDecelerating = deltaV <= -0.05;
+        const primaryColor = isAccelerating ? "var(--accent-green)" : (isDecelerating ? "var(--accent-red)" : "white");
+
+        uiSpeed.textContent = currentSpeed.toFixed(2) + " km/s";
+        uiVInit.textContent = initialShipSpeed.toFixed(2) + " km/s";
+        uiVMax.textContent = maxShipSpeed.toFixed(2) + " km/s";
+        uiDist.textContent = Math.round(dist) + " km";
+        uiVinf.textContent = theoreticalVinf.toFixed(2) + " km/s";
+        uiDeflection.textContent = theoreticalDeflection.toFixed(1) + "°";
+        uiActualPeri.textContent = actualPeriapsis < 5000 ? Math.round(actualPeriapsis) + " km" : "-";
+
+        uiDelta.textContent = deltaText; uiDelta.style.color = primaryColor;
+        uiPct.textContent = pctText; uiPct.style.color = primaryColor;
+
+        const pctBar = Math.min(Math.max((currentSpeed / 45) * 100, 5), 100);
+        speedBar.style.width = pctBar + "%";
+        speedBar.style.background = isDecelerating ? "linear-gradient(90deg, #ff3366, #ff9900)" : "linear-gradient(90deg, #00f2fe, #00ff88)";
+
+        miniHudSpeed.textContent = currentSpeed.toFixed(2) + " km/s";
+        miniHudPct.textContent = pctText;
+        miniHudPct.style.color = primaryColor;
+
+        if (!isReset) {
+            if (dist <= planetRadius) {
+                const text = t('gs_status_collision');
+                uiBadge.textContent = text; uiBadge.style.background = "var(--accent-red)";
+                miniHudBadge.textContent = t('gs_status_collision_short'); miniHudBadge.style.background = "var(--accent-red)"; miniHudBadge.style.borderColor = "red";
+                simRunning = false;
+            } else if (dist < actualPeriapsis + 15 && dist < 180) {
+                const text = t('gs_status_periapsis');
+                uiBadge.textContent = text; uiBadge.style.background = "var(--accent-purple)";
+                miniHudBadge.textContent = t('gs_status_periapsis'); miniHudBadge.style.background = "var(--accent-purple)"; miniHudBadge.style.borderColor = "#b026ff";
+            } else if (dist > 320 && dist > actualPeriapsis + 20) {
+                if (deltaV > 0.2) {
+                    uiBadge.textContent = `${t('gs_status_accelerated')} (${pctText})`; uiBadge.style.background = "var(--accent-green)";
+                    miniHudBadge.textContent = t('gs_status_accelerated_short'); miniHudBadge.style.background = "rgba(0, 255, 136, 0.25)"; miniHudBadge.style.borderColor = "var(--accent-green)";
+                } else if (deltaV < -0.2) {
+                    uiBadge.textContent = `${t('gs_status_decelerated')} (${pctText})`; uiBadge.style.background = "var(--accent-red)";
+                    miniHudBadge.textContent = t('gs_status_decelerated_short'); miniHudBadge.style.background = "rgba(255, 51, 102, 0.25)"; miniHudBadge.style.borderColor = "var(--accent-red)";
+                } else {
+                    uiBadge.textContent = t('gs_status_deflected'); uiBadge.style.background = "var(--accent-purple)";
+                    miniHudBadge.textContent = t('gs_status_deflected'); miniHudBadge.style.background = "rgba(176, 38, 255, 0.25)"; miniHudBadge.style.borderColor = "#b026ff";
+                }
+            } else {
+                const text = t('gs_status_flight');
+                uiBadge.textContent = text; uiBadge.style.background = "#333";
+                miniHudBadge.textContent = text; miniHudBadge.style.background = "rgba(255, 215, 0, 0.15)"; miniHudBadge.style.borderColor = "var(--accent-gold)";
+            }
+        } else {
+            uiBadge.textContent = t('gs_status_ready'); uiBadge.style.background = "#333";
+            miniHudBadge.textContent = t('gs_status_ready'); miniHudBadge.style.background = "rgba(255, 255, 255, 0.1)"; miniHudBadge.style.borderColor = "rgba(255, 255, 255, 0.2)";
+        }
+
+        if (showVectors) {
+            velArrow.position.copy(shipPos); velArrow.setDirection(shipVel.clone().normalize()); velArrow.setLength(Math.min(currentSpeed * 3, 110));
+            pVelArrow.position.copy(planetPos); pVelArrow.setDirection(planetVel.clone().normalize()); pVelArrow.setLength(65);
+            const rVec = new THREE.Vector3().subVectors(planetPos, shipPos);
+            gravityArrow.position.copy(shipPos); gravityArrow.setDirection(rVec.clone().normalize());
+            gravityArrow.setLength(Math.min((GM / (dist * dist)) * 150, 130));
+        }
+    }
+
+    // --- FİZİK ADIMLARI ---
+    function physicsStep() {
+        if (!simRunning) return;
+
+        const baseDt = 0.04 * simSpeedMultiplier;
+        const subSteps = 12; 
+        const dt = baseDt / subSteps;
+
+        function getAcceleration(sPos, pPos) {
+            const rVec = new THREE.Vector3().subVectors(pPos, sPos);
+            const distSq = rVec.lengthSq();
+            if (distSq <= planetRadius * planetRadius) return new THREE.Vector3(0, 0, 0); 
+            return rVec.normalize().multiplyScalar(GM / distSq);
+        }
+
+        for (let step = 0; step < subSteps; step++) {
+            const p0 = getPlanetPos(currentPlanetAngle);
+            const p_half = getPlanetPos(currentPlanetAngle + currentOmega * dt * 0.5);
+            const p_full = getPlanetPos(currentPlanetAngle + currentOmega * dt);
+
+            const a1 = getAcceleration(shipPos, p0);
+            const k1_v = a1.clone().multiplyScalar(dt);
+            const k1_r = shipVel.clone().multiplyScalar(dt);
+
+            const a2 = getAcceleration(shipPos.clone().addScaledVector(k1_r, 0.5), p_half);
+            const k2_v = a2.clone().multiplyScalar(dt);
+            const k2_r = shipVel.clone().addScaledVector(k1_v, 0.5).multiplyScalar(dt);
+
+            const a3 = getAcceleration(shipPos.clone().addScaledVector(k2_r, 0.5), p_half);
+            const k3_v = a3.clone().multiplyScalar(dt);
+            const k3_r = shipVel.clone().addScaledVector(k2_v, 0.5).multiplyScalar(dt);
+
+            const a4 = getAcceleration(shipPos.clone().add(k3_r), p_full);
+            const k4_v_correct = a4.clone().multiplyScalar(dt);
+            const k4_r_correct = shipVel.clone().add(k3_v).multiplyScalar(dt);
+
+            shipVel.add(k1_v.addScaledVector(k2_v, 2).addScaledVector(k3_v, 2).add(k4_v_correct).multiplyScalar(1/6));
+            shipPos.add(k1_r.addScaledVector(k2_r, 2).addScaledVector(k3_r, 2).add(k4_r_correct).multiplyScalar(1/6));
+
+            currentPlanetAngle += currentOmega * dt;
+            planetPos.copy(getPlanetPos(currentPlanetAngle));
+            planetVel.copy(getPlanetVel(currentPlanetAngle, currentPlanetSpeed));
+
+            if (shipPos.distanceTo(planetPos) <= planetRadius) { simRunning = false; break; }
+        }
+
+        planetGroup.position.copy(planetPos);
+        shipGroup.position.copy(shipPos);
+
+        if (shipVel.lengthSq() > 0.01) {
+            shipGroup.quaternion.slerp(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), shipVel.clone().normalize()), 0.25);
+        }
+
+        if (trailCount === 0) {
+            trailPositions[0] = shipPos.x; trailPositions[1] = shipPos.y; trailPositions[2] = shipPos.z;
+            trailCount++;
+            trailGeo.setDrawRange(0, trailCount);
+            trailGeo.attributes.position.needsUpdate = true;
+        } else {
+            const lastIdx = (trailCount === MAX_TRAIL ? MAX_TRAIL - 1 : trailCount - 1) * 3;
+            const lastPos = new THREE.Vector3(trailPositions[lastIdx], trailPositions[lastIdx+1], trailPositions[lastIdx+2]);
+            
+            if (shipPos.distanceTo(lastPos) > 2.5) {
+                if (trailCount < MAX_TRAIL) {
+                    trailPositions[trailCount * 3] = shipPos.x;
+                    trailPositions[trailCount * 3 + 1] = shipPos.y;
+                    trailPositions[trailCount * 3 + 2] = shipPos.z;
+                    trailCount++;
+                    trailGeo.setDrawRange(0, trailCount);
+                } else {
+                    trailPositions.copyWithin(0, 3, MAX_TRAIL * 3);
+                    trailPositions[(MAX_TRAIL - 1) * 3] = shipPos.x;
+                    trailPositions[(MAX_TRAIL - 1) * 3 + 1] = shipPos.y;
+                    trailPositions[(MAX_TRAIL - 1) * 3 + 2] = shipPos.z;
+                }
+                trailGeo.attributes.position.needsUpdate = true;
+            }
+        }
+
+        if (cameraFocus === 'planet') {
+            controls.target.lerp(planetPos, 0.1);
+        } else if (cameraFocus === 'ship') {
+            controls.target.lerp(shipPos, 0.1);
+        }
+        
+        updateUI();
+    }
+
+    // --- DİNLEYİCİLER VE ARAYÜZ KONTROLLERİ ---
+    document.getElementById('btn-play').addEventListener('click', () => simRunning = true);
+    document.getElementById('btn-pause').addEventListener('click', () => simRunning = false);
+    document.getElementById('btn-reset').addEventListener('click', resetSimulation);
+
+    document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            simSpeedMultiplier = parseFloat(e.currentTarget.getAttribute('data-speed'));
+        });
+    });
+
+    document.getElementById('btn-vectors').addEventListener('click', (e) => {
+        showVectors = !showVectors;
+        e.currentTarget.classList.toggle('active');
+        velArrow.visible = pVelArrow.visible = gravityArrow.visible = showVectors;
+    });
+
+    document.getElementById('btn-orbit').addEventListener('click', (e) => {
+        e.currentTarget.classList.toggle('active');
+        orbitLine.visible = e.currentTarget.classList.contains('active');
+    });
+
+    const btnCamPlanet = document.getElementById('btn-cam-planet');
+    const btnCamShip = document.getElementById('btn-cam-ship');
+
+    btnCamPlanet.addEventListener('click', () => {
+        if (cameraFocus === 'planet') {
+            cameraFocus = 'none';
+            btnCamPlanet.classList.remove('active');
+            controls.target.set(0, 0, 0);
+        } else {
+            cameraFocus = 'planet';
+            btnCamPlanet.classList.add('active');
+            btnCamShip.classList.remove('active');
+        }
+    });
+
+    btnCamShip.addEventListener('click', () => {
+        if (cameraFocus === 'ship') {
+            cameraFocus = 'none';
+            btnCamShip.classList.remove('active');
+            controls.target.set(0, 0, 0);
+        } else {
+            cameraFocus = 'ship';
+            btnCamShip.classList.add('active');
+            btnCamPlanet.classList.remove('active');
+        }
+    });
+
+    document.querySelectorAll('.path-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            currentScenarioKey = e.currentTarget.getAttribute('data-scenario');
+            document.getElementById('val-desc').textContent = t(scenarios[currentScenarioKey].descKey);
+            resetSimulation();
+        });
+    });
+
+    document.getElementById('slider-impact').addEventListener('input', (e) => {
+        document.getElementById('val-impact-text').textContent = e.target.value + " km";
+        resetSimulation();
+    });
+
+    document.getElementById('slider-initspeed').addEventListener('input', (e) => {
+        document.getElementById('val-initspeed-text').textContent = parseFloat(e.target.value).toFixed(1) + " km/s";
+        resetSimulation();
+    });
+
+    const sheet = document.getElementById('bottom-sheet');
+    const dragArea = document.getElementById('drag-area');
+    const dragIcon = document.getElementById('drag-icon');
+    let isDraggingSheet = false, sheetStartY = 0;
+
+    function handleDragStart(y) { isDraggingSheet = true; sheetStartY = y; sheet.style.transition = 'none'; }
+    function handleDragMove(y) {
+        if (!isDraggingSheet) return;
+        const deltaY = y - sheetStartY;
+        if (deltaY < 0 && sheet.classList.contains('collapsed')) {
+            sheet.style.transform = `translateY(calc(100% - 85px + ${deltaY}px))`;
+        } else if (deltaY > 0 && !sheet.classList.contains('collapsed')) {
+            sheet.style.transform = `translateY(${deltaY}px)`;
+        }
+    }
+    function handleDragEnd(y) {
+        if (!isDraggingSheet) return;
+        isDraggingSheet = false;
+        sheet.style.transition = 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+        sheet.style.transform = '';
+        const deltaY = y - sheetStartY;
+        if (Math.abs(deltaY) < 12) {
+            sheet.classList.toggle('collapsed');
+        } else {
+            if (sheet.classList.contains('collapsed') && deltaY < -40) sheet.classList.remove('collapsed');
+            else if (!sheet.classList.contains('collapsed') && deltaY > 40) sheet.classList.add('collapsed');
+        }
+        dragIcon.textContent = sheet.classList.contains('collapsed') ? '▲' : '▼';
+    }
+
+    dragArea.addEventListener('touchstart', (e) => handleDragStart(e.touches[0].clientY), {passive: true});
+    window.addEventListener('touchmove', (e) => handleDragMove(e.touches[0].clientY), {passive: true});
+    window.addEventListener('touchend', (e) => handleDragEnd(e.changedTouches[0].clientY));
+    dragArea.addEventListener('mousedown', (e) => handleDragStart(e.clientY));
+    window.addEventListener('mousemove', (e) => handleDragMove(e.clientY));
+    window.addEventListener('mouseup', (e) => handleDragEnd(e.clientY));
+
+    resetSimulation();
+
+    // --- ANİMASYON VE YÜKSEK HZ / DELTA TIME DÜZELTME DÖNGÜSÜ ---
+    let physicsAccumulator = 0;
+    let lastAnimTime = performance.now();
+    const TARGET_STEP = 1 / 60; // 60 Hz sabit adımlama frekansı
+
+    function animate(currentTime) {
+        requestAnimationFrame(animate);
+        
+        const now = currentTime || performance.now();
+        let frameDelta = (now - lastAnimTime) / 1000;
+        lastAnimTime = now;
+
+        // Sekme değişimi veya ani FPS düşüşlerinde patlamayı önlemek için üst sınır
+        if (frameDelta > 0.1) frameDelta = 0.1;
+
+        physicsAccumulator += frameDelta;
+
+        // Ekran tazeleme hızından (60Hz, 120Hz, 144Hz) bağımsız olarak fiziği sabit hızda çalıştırır
+        while (physicsAccumulator >= TARGET_STEP) {
+            physicsStep();
+            physicsAccumulator -= TARGET_STEP;
+        }
+
+        const elapsedTime = clock.getElapsedTime();
+        sunUniforms.uTime.value = elapsedTime;
+
+        // Rastgele Kayan Yıldız (Meteor) Animasyonu
+        if (Math.random() < 0.006 && !shootingStarActive) {
+            triggerShootingStar();
+        }
+
+        if (shootingStarActive) {
+            shootingStarProgress += 0.035;
+            if (shootingStarProgress >= 1.0) {
+                shootingStarActive = false;
+                shootingStarMat.opacity = 0;
+            } else {
+                const head = new THREE.Vector3().lerpVectors(meteorStart, meteorEnd, shootingStarProgress);
+                const tail = new THREE.Vector3().lerpVectors(meteorStart, meteorEnd, Math.max(0, shootingStarProgress - 0.18));
+                shootingStarPos[0] = tail.x; shootingStarPos[1] = tail.y; shootingStarPos[2] = tail.z;
+                shootingStarPos[3] = head.x; shootingStarPos[4] = head.y; shootingStarPos[5] = head.z;
+                shootingStarGeo.attributes.position.needsUpdate = true;
+                shootingStarMat.opacity = Math.sin(shootingStarProgress * Math.PI) * 0.95;
+            }
+        }
+
+        planetMesh.rotation.y += 0.006;
+        cloudMesh.rotation.y += 0.009;
+        planetAtmos.rotation.y -= 0.002;
+
+        const plume = shipGroup.getObjectByName("enginePlume");
+        if (plume) {
+            const scale = 0.85 + 0.3 * Math.sin(elapsedTime * 25);
+            plume.scale.set(scale, scale, scale);
+        }
+
+        const navL = shipGroup.getObjectByName("navLeft");
+        const navR = shipGroup.getObjectByName("navRight");
+        const flash = Math.sin(elapsedTime * 8) > 0;
+        if (navL) navL.visible = flash;
+        if (navR) navR.visible = flash;
+        
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+</script>
+</body>
+</html>

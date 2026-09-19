@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="sim_atomic_orbital">3D Atom Orbitali Simülasyonu (Bilimsel Model)</title>
+
+    <!-- Çoklu Dil Desteği Dosyası -->
+    <script src="lang.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #080b10;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #e2e8f0;
+            touch-action: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Geri Butonu Stili */
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 200;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .back-button:hover {
+            background: rgba(30, 41, 59, 0.9);
+            color: #38bdf8;
+            border-color: rgba(56, 189, 248, 0.4);
+            transform: scale(1.05);
+        }
+        .back-button svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        /* Onay Ekranı (Modal) Stili */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(8, 11, 16, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-container {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 24px;
+            width: 90%;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .modal-overlay.active .modal-container {
+            transform: scale(1);
+        }
+        .modal-title {
+            margin: 0 0 10px 0;
+            font-size: 1.1rem;
+            color: #fff;
+            font-weight: 600;
+        }
+        .modal-text {
+            margin: 0 0 24px 0;
+            font-size: 0.9rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        .modal-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .modal-btn-cancel {
+            background: rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .modal-btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+        }
+        .modal-btn-confirm {
+            background: #38bdf8;
+            color: #0f172a;
+        }
+        .modal-btn-confirm:hover {
+            background: #7dd3fc;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+        
+        #ui-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            max-height: 85vh; 
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(calc(100% - 70px));
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        
+        #ui-panel.open {
+            transform: translateY(0);
+        }
+
+        .panel-header {
+            height: 70px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            flex-shrink: 0;
+            touch-action: pan-y;
+        }
+        .panel-header:active {
+            cursor: grabbing;
+        }
+        .drag-handle {
+            width: 40px;
+            height: 5px;
+            background-color: rgba(255, 255, 255, 0.4);
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+        .panel-title {
+            margin: 0;
+            font-size: 1.05rem;
+            color: #38bdf8;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            pointer-events: none;
+        }
+
+        .panel-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+            scrollbar-width: thin;
+            scrollbar-color: #38bdf8 transparent;
+            touch-action: pan-y;
+        }
+        .panel-content::-webkit-scrollbar { width: 6px; }
+        .panel-content::-webkit-scrollbar-thumb { background-color: rgba(56, 189, 248, 0.5); border-radius: 10px; }
+
+        .info-box {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid #38bdf8;
+            padding: 12px 15px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+        .info-box h3 { margin: 0 0 10px 0; font-size: 1.05rem; color: #fff; }
+        .info-box strong { color: #f8fafc; }
+        .info-box span.highlight { color: #38bdf8; font-weight: bold; }
+        
+        .control-group { margin-bottom: 18px; }
+        label { display: block; font-size: 0.85rem; margin-bottom: 8px; color: #94a3b8; font-weight: 500; }
+        select, input[type=range] {
+            width: 100%;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 10px 12px;
+            border-radius: 8px;
+            outline: none;
+            font-size: 0.9rem;
+        }
+        select:focus { border-color: #38bdf8; }
+        select option {
+            background-color: #0f172a;
+            color: #fff;
+        }
+        
+        .legend {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            margin-top: 10px;
+            padding: 15px 0 5px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.85rem;
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .positive { background-color: #ff5252; box-shadow: 0 0 10px rgba(255, 82, 82, 0.6); }
+        .negative { background-color: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.6); }
+
+        @media (min-width: 768px) {
+            #ui-panel { width: 420px; left: 50%; margin-left: -210px; border-radius: 20px 20px 0 0; }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <button id="back-btn" class="back-button" aria-label="Geri">
+        <svg viewBox="0 0 24 24">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+        </svg>
+    </button>
+
+    <div id="exit-modal" class="modal-overlay">
+        <div class="modal-container">
+            <h3 class="modal-title" data-i18n="modal_exit_title">Ana Ekrana Dön</h3>
+            <p class="modal-text" data-i18n="modal_exit_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-buttons">
+                <button id="modal-cancel" class="modal-btn modal-btn-cancel" data-i18n="modal_cancel">İptal</button>
+                <button id="modal-confirm" class="modal-btn modal-btn-confirm" data-i18n="modal_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-panel">
+        <div class="panel-header" id="panel-header">
+            <div class="drag-handle"></div>
+            <h2 class="panel-title" data-i18n="panel_title">Menü & Açıklamalar</h2>
+        </div>
+
+        <div class="panel-content">
+            <div class="info-box" id="info-box">
+                <h3 id="info-title" data-i18n="info_title">Orbital Bilgisi</h3>
+                <p id="info-desc" data-i18n="info_desc">Yükleniyor...</p>
+            </div>
+
+            <div class="control-group">
+                <label for="orbital-select" data-i18n="label_select_orbital">Orbital Türünü Seçin:</label>
+                <select id="orbital-select">
+                    <option value="1s">1s (n=1, l=0, m=0)</option>
+                    <option value="2s">2s (n=2, l=0, m=0)</option>
+                    <option value="2pz" selected>2p_z (n=2, l=1, m=0)</option>
+                    <option value="2px">2p_x (n=2, l=1, ±1)</option>
+                    <option value="3dz2">3d_z² (n=3, l=2, m=0)</option>
+                    <option value="3dxy">3d_xy (n=3, l=2, ±2)</option>
+                    <option value="4fz3">4f_z³ (n=4, l=3, m=0)</option>
+                    <option value="4fxyz">4f_xyz (n=4, l=3, ±2)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="particle-count"><span data-i18n="label_particle_density">Nokta Yoğunluğu</span>: <span id="count-val">40,000</span></label>
+                <input type="range" id="particle-count" min="5000" max="80000" step="5000" value="40000">
+            </div>
+
+            <div class="control-group">
+                <label for="rot-speed" data-i18n="label_rot_speed">Otomatik Dönme Hızı:</label>
+                <input type="range" id="rot-speed" min="0" max="0.01" step="0.0005" value="0.002">
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="dot positive"></div>
+                    <span data-i18n="legend_pos">Pozitif Faz (+)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot negative"></div>
+                    <span data-i18n="legend_neg">Negatif Faz (-)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ÇOKLU DİL (i18n) UYGULAMA MOTORU
+        function applyTranslations() {
+            const activeLang = typeof currentLang !== 'undefined' ? currentLang : 'tr';
+            
+            if (typeof translations !== 'undefined' && translations[activeLang]) {
+                const langDict = translations[activeLang];
+                document.querySelectorAll('[data-i18n]').forEach(element => {
+                    const key = element.getAttribute('data-i18n');
+                    if (langDict[key]) {
+                        if (element.tagName === 'TITLE') {
+                            document.title = langDict[key];
+                        } else {
+                            element.textContent = langDict[key];
+                        }
+                    }
+                });
+            }
+        }
+
+        // GERİ BUTONU VE MODAL MANTIĞI
+        const backBtn = document.getElementById('back-btn');
+        const exitModal = document.getElementById('exit-modal');
+        const modalCancel = document.getElementById('modal-cancel');
+        const modalConfirm = document.getElementById('modal-confirm');
+
+        backBtn.addEventListener('click', () => {
+            exitModal.classList.add('active');
+        });
+
+        modalCancel.addEventListener('click', () => {
+            exitModal.classList.remove('active');
+        });
+
+        modalConfirm.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        // BİLİMSEL VE DETAYLI AÇIKLAMALAR (ÇOKLU DİL DESTEKLİ)
+        const orbitalDescriptions = {
+            '1s': { 
+                tr: {
+                    title: '1s Orbitali', 
+                    desc: '<strong>Kuantum Sayıları:</strong> n=1, l=0, m=0<br><br>Hidrojen atomunun temel (en düşük enerjili) halidir. Tamamen küresel simetriye sahiptir. Bu orbitalde hiçbir radyal veya açısal <strong>düğüm (node)</strong> bulunmaz; yani olasılığın sıfıra düştüğü bir boşluk yoktur. Elektron büyük ihtimalle çekirdeğe çok yakın bir bölgede bulunur.'
+                },
+                en: {
+                    title: '1s Orbital', 
+                    desc: '<strong>Quantum Numbers:</strong> n=1, l=0, m=0<br><br>The ground state (lowest energy) of the hydrogen atom. It features spherical symmetry with no radial or angular <strong>nodes</strong> (zero-probability regions). The electron is mostly localized near the nucleus.'
+                },
+                // --- JAPANESE ATOMIC ORBITAL DESCRIPTIONS ---
+                ja: {
+                    title: '1s軌道',
+                    desc: '<strong>量子数：</strong> n=1, l=0, m=0<br><br>水素原子の基底状態（最低エネルギー状態）です。完全な球対称性を持ち、半径方向にも角度方向にも<strong>節</strong>（電子が存在する確率がゼロの領域）はありません。電子は主に原子核の近くに分布します。'
+                },
+                zh: {
+                    title: '1s轨道',
+                    desc: '<strong>量子数：</strong>n=1，l=0，m=0<br><br>这是氢原子的基态（最低能量状态），具有球对称性，不存在径向或角向<strong>节点</strong>（电子概率为零的区域）。电子主要分布在原子核附近。'
+                },
+                es: {
+                    title: 'Orbital 1s',
+                    desc: '<strong>Números cuánticos:</strong> n=1, l=0, m=0<br><br>Es el estado fundamental (de menor energía) del átomo de hidrógeno. Tiene simetría esférica y no presenta <strong>nodos</strong> radiales ni angulares (regiones con probabilidad cero). El electrón se localiza principalmente cerca del núcleo.'
+                },
+                de: {
+                    title: '1s-Orbital',
+                    desc: '<strong>Quantenzahlen:</strong> n=1, l=0, m=0<br><br>Der Grundzustand (niedrigster Energiezustand) des Wasserstoffatoms. Es besitzt Kugelsymmetrie und keine radialen oder angularen <strong>Knoten</strong> (Bereiche mit Aufenthaltswahrscheinlichkeit null). Das Elektron befindet sich überwiegend in der Nähe des Kerns.'
+                },
+                fr: {
+                    title: 'Orbitale 1s',
+                    desc: '<strong>Nombres quantiques :</strong> n=1, l=0, m=0<br><br>État fondamental (de plus basse énergie) de l\'atome d\'hydrogène. Il possède une symétrie sphérique et aucun <strong>nœud</strong> radial ou angulaire (région de probabilité nulle). L\'électron se trouve principalement près du noyau.'
+                }
+            },
+            '2s': { 
+                tr: {
+                    title: '2s Orbitali', 
+                    desc: '<strong>Kuantum Sayıları:</strong> n=2, l=0, m=0<br><br>1s gibi küresel simetriye sahiptir ancak enerjisi daha yüksek ve çapı daha geniştir. Matematiksel olarak <span class="highlight">1-x</span> Laguerre polinomundan dolayı içinde bir adet <strong>radyal düğüm</strong> (olasılığın sıfır olduğu karanlık, dairesel kabuk) barındırır. Bu özellik elektronun belli bir uzaklıkta asla bulunamayacağı anlamına gelir.' 
+                },
+                en: {
+                    title: '2s Orbital', 
+                    desc: '<strong>Quantum Numbers:</strong> n=2, l=0, m=0<br><br>Spheric like 1s, but larger in diameter and higher in energy. It contains a <strong>radial node</strong> (a dark spherical shell where electron probability drops to zero) derived from the Laguerre polynomial.'
+                },
+                ja: {
+                    title: '2s軌道',
+                    desc: '<strong>量子数：</strong> n=2, l=0, m=0<br><br>1sと同じく球対称ですが、直径が大きくエネルギーも高くなります。ラゲール多項式に由来する<strong>半径方向の節</strong>（電子の存在確率がゼロになる暗い球殻）を1つ持ちます。'
+                },
+                zh: {
+                    title: '2s轨道',
+                    desc: '<strong>量子数：</strong>n=2，l=0，m=0<br><br>它与1s轨道一样具有球对称性，但直径更大、能量更高。由于拉盖尔多项式的性质，它包含一个<strong>径向节点</strong>（电子概率降为零的暗色球壳）。'
+                },
+                es: {
+                    title: 'Orbital 2s',
+                    desc: '<strong>Números cuánticos:</strong> n=2, l=0, m=0<br><br>Tiene simetría esférica como el 1s, pero un diámetro mayor y más energía. Contiene un <strong>nodo radial</strong>, una capa esférica oscura donde la probabilidad de encontrar el electrón es cero, debido al polinomio de Laguerre.'
+                },
+                de: {
+                    title: '2s-Orbital',
+                    desc: '<strong>Quantenzahlen:</strong> n=2, l=0, m=0<br><br>Wie 1s kugelsymmetrisch, aber mit größerem Durchmesser und höherer Energie. Aufgrund des Laguerre-Polynoms enthält es einen <strong>radialen Knoten</strong>, eine dunkle Kugelschale, in der die Aufenthaltswahrscheinlichkeit des Elektrons auf null sinkt.'
+                },
+                fr: {
+                    title: 'Orbitale 2s',
+                    desc: '<strong>Nombres quantiques :</strong> n=2, l=0, m=0<br><br>Comme 1s, il possède une symétrie sphérique, mais son diamètre et son énergie sont plus élevés. Le polynôme de Laguerre lui donne un <strong>nœud radial</strong>, une coquille sphérique sombre où la probabilité de présence de l\'électron est nulle.'
+                }
+            },
+            '2pz': { 
+                tr: {
+                    title: '2p_z Orbitali', 
+                    desc: '<strong>Kuantum Sayıları:</strong> n=2, l=1, m=0<br><br>Z ekseni boyunca uzanan "halter" (dumbbell) şeklindeki p orbitalidir. Pozitif (+) ve negatif (-) olmak üzere iki zıt fazlı dalga lobundan oluşur. Tam ortadan geçen <strong>XY düzlemi bir açısal düğümdür</strong>, bu düzlem üzerinde (çekirdekte dahil) elektron bulunma olasılığı tam olarak sıfırdır.' 
+                },
+                en: {
+                    title: '2p_z Orbital', 
+                    desc: '<strong>Quantum Numbers:</strong> n=2, l=1, m=0<br><br>A dumbbell-shaped p orbital aligned along the Z axis, featuring positive (+) and negative (-) wave lobes. The <strong>XY plane acts as an angular nodal plane</strong> where electron probability is strictly zero.'
+                },
+                ja: {
+                    title: '2p_z軌道',
+                    desc: '<strong>量子数：</strong> n=2, l=1, m=0<br><br>Z軸に沿って伸びるダンベル形のp軌道で、正（+）と負（-）の逆位相の波動ローブを持ちます。中心を通る<strong>XY平面は角度方向の節面</strong>であり、この平面上（原子核を含む）では電子の存在確率が完全にゼロです。'
+                },
+                zh: {
+                    title: '2p_z轨道',
+                    desc: '<strong>量子数：</strong>n=2，l=1，m=0<br><br>这是沿Z轴排列的哑铃形p轨道，具有正（+）和负（-）两个相反相位的波瓣。穿过中心的<strong>XY平面是角节点面</strong>，在该平面上（包括原子核处）电子出现的概率严格为零。'
+                },
+                es: {
+                    title: 'Orbital 2p_z',
+                    desc: '<strong>Números cuánticos:</strong> n=2, l=1, m=0<br><br>Es un orbital p con forma de mancuerna, alineado con el eje Z, con dos lóbulos de onda de fase opuesta, positiva (+) y negativa (-). El <strong>plano XY es un plano nodal angular</strong> donde la probabilidad electrónica es exactamente cero.'
+                },
+                de: {
+                    title: '2p_z-Orbital',
+                    desc: '<strong>Quantenzahlen:</strong> n=2, l=1, m=0<br><br>Ein hantelförmiges p-Orbital entlang der Z-Achse mit zwei Wellenkeulen entgegengesetzter Phase, positiv (+) und negativ (-). Die <strong>XY-Ebene ist eine angulare Knotenebene</strong>, in der die Aufenthaltswahrscheinlichkeit des Elektrons exakt null ist.'
+                },
+                fr: {
+                    title: 'Orbitale 2p_z',
+                    desc: '<strong>Nombres quantiques :</strong> n=2, l=1, m=0<br><br>Un orbitale p en forme d\'haltère, orientée le long de l\'axe Z, avec deux lobes d\'onde de phases opposées, positive (+) et négative (-). Le <strong>plan XY est un plan nodal angulaire</strong> où la probabilité de présence de l\'électron est strictement nulle.'
+                }
+            },
+            '2px': { 
+                tr: {
+                    title: '2p_x Orbitali', 
+                    desc: '<strong>Kuantum Sayıları:</strong> n=2, l=1, m=±1<br><br>2pz ile tamamen aynı şekle ve enerjiye sahip olup sadece <strong>X ekseni boyunca</strong> hizalanmıştır. Bu orbitalde YZ düzlemi elektronun asla bulunamadığı açısal düğüm düzlemidir. p orbitalleri, kimyadaki meşhur "Pi bağlarının" oluşumundan sorumludur.' 
+                },
+                en: {
+                    title: '2p_x Orbital', 
+                    desc: '<strong>Quantum Numbers:</strong> n=2, l=1, m=±1<br><br>Identical in shape to 2pz but oriented along the <strong>X axis</strong>. The YZ plane acts as its angular nodal plane. Responsible for forming Pi bonds in chemical structures.'
+                },
+                ja: {
+                    title: '2p_x軌道',
+                    desc: '<strong>量子数：</strong> n=2, l=1, m=±1<br><br>2p_zと同じ形とエネルギーを持ちますが、<strong>X軸方向</strong>に向いています。YZ平面が角度方向の節面となります。p軌道は化学構造における有名なπ結合の形成に関わります。'
+                },
+                zh: {
+                    title: '2p_x轨道',
+                    desc: '<strong>量子数：</strong>n=2，l=1，m=±1<br><br>它的形状和能量与2p_z相同，但沿<strong>X轴</strong>排列。YZ平面是它的角节点面。p轨道参与化学结构中π键的形成。'
+                },
+                es: {
+                    title: 'Orbital 2p_x',
+                    desc: '<strong>Números cuánticos:</strong> n=2, l=1, m=±1<br><br>Tiene la misma forma y energía que el 2p_z, pero está orientado a lo largo del <strong>eje X</strong>. El plano YZ es su plano nodal angular. Los orbitales p participan en la formación de los conocidos enlaces pi de la química.'
+                },
+                de: {
+                    title: '2p_x-Orbital',
+                    desc: '<strong>Quantenzahlen:</strong> n=2, l=1, m=±1<br><br>Es besitzt dieselbe Form und Energie wie 2p_z, ist jedoch entlang der <strong>X-Achse</strong> ausgerichtet. Die YZ-Ebene ist seine angulare Knotenebene. p-Orbitale sind an der Bildung der bekannten Pi-Bindungen in chemischen Strukturen beteiligt.'
+                },
+                fr: {
+                    title: 'Orbitale 2p_x',
+                    desc: '<strong>Nombres quantiques :</strong> n=2, l=1, m=±1<br><br>Il possède la même forme et la même énergie que 2p_z, mais il est orienté le long de l\' <strong>axe X</strong>. Le plan YZ est son plan nodal angulaire. Les orbitales p participent à la formation des célèbres liaisons π en chimie.'
+                }
+            },
+            '3dz2': { 
+                tr: {
+                    title: '3d_z² Orbitali', 
+                    desc: '<strong>Kuantum Sayıları:</strong> n=3, l=2, m=0<br><br>Diğer d orbitallerinden oldukça farklı ikonik bir şekle sahiptir. Z ekseni boyunca uzanan iki büyük lob ve XY düzleminde ekvatoru saran bir <strong>elektron simidi (torus)</strong> barındırır. İçerisinde huni şeklinde iki adet konik düğüm (karanlık boşluk) bulunur.' 
+                },
+                en: {
+                    title: '3d_z² Orbital', 
+                    desc: '<strong>Quantum Numbers:</strong> n=3, l=2, m=0<br><br>An iconic shape with two major lobes along the Z axis surrounded by an equatorial <strong>torus (donut ring)</strong> in the XY plane. Features two conical nodal surfaces.'
+                },
+                ja: {
+                    title: '3d_z²軌道',
+                    desc: '<strong>量子数：</strong> n=3, l=2, m=0<br><br>Z軸に沿う2つの大きなローブと、XY平面の赤道部分を囲む<strong>トーラス（ドーナツ状の輪）</strong>を持つ特徴的な形です。2つの円錐形の節面があります。'
+                },
+                zh: {
+                    title: '3d_z²轨道',
+                    desc: '<strong>量子数：</strong>n=3，l=2，m=0<br><br>它具有标志性的形状：沿Z轴分布的两个主要波瓣，以及XY平面赤道位置的<strong>环面（甜甜圈形环）</strong>。同时具有两个圆锥形节点面。'
+                },
+                es: {
+                    title: 'Orbital 3d_z²',
+                    desc: '<strong>Números cuánticos:</strong> n=3, l=2, m=0<br><br>Tiene una forma característica con dos lóbulos principales a lo largo del eje Z y un <strong>toro (anillo)</strong> ecuatorial en el plano XY. Presenta dos superficies nodales cónicas.'
+                },
+                de: {
+                    title: '3d_z²-Orbital',
+                    desc: '<strong>Quantenzahlen:</strong> n=3, l=2, m=0<br><br>Es besitzt eine charakteristische Form mit zwei großen Keulen entlang der Z-Achse und einem äquatorialen <strong>Torus (Ring)</strong> in der XY-Ebene. Außerdem weist es zwei kegelförmige Knotenflächen auf.'
+                },
+                fr: {
+                    title: 'Orbitale 3d_z²',
+                    desc: '<strong>Nombres quantiques :</strong> n=3, l=2, m=0<br><br>Une forme caractéristique avec deux grands lobes le long de l\'axe Z, entourés d\'un <strong>tore</strong> équatorial dans le plan XY. Il possède également deux surfaces nodales coniques.'
+                }
+            },
+            '3dxy': { 
+                tr: {
+                    title: '3d_xy Orbitali', 
+                    desc: '<strong>Kuantum Sayıları:</strong> n=3, l=2, m=±2<br><br>Tamamı XY düzlemi üzerine yayılmış <strong>4 yapraklı yonca</strong> şeklindedir. Loblar tam olarak eksenlerin arasına (45 derecelik açılarla) konumlanmıştır. Hem XZ hem de YZ düzlemleri elektron olasılığının sıfır olduğu kesişen düğüm düzlemleridir.' 
+                },
+                en: {
+                    title: '3d_xy Orbital', 
+                    desc: '<strong>Quantum Numbers:</strong> n=3, l=2, m=±2<br><br>A <strong>cloverleaf-shaped</strong> orbital residing on the XY plane. Lobes are oriented between axes at 45-degree angles, with XZ and YZ planes serving as nodal planes.'
+                },
+                ja: {
+                    title: '3d_xy軌道',
+                    desc: '<strong>量子数：</strong> n=3, l=2, m=±2<br><br>XY平面上に広がる<strong>四つ葉のクローバー形</strong>の軌道です。ローブは各軸の間、45度の方向に配置され、XZ平面とYZ平面が節面になります。'
+                },
+                zh: {
+                    title: '3d_xy轨道',
+                    desc: '<strong>量子数：</strong>n=3，l=2，m=±2<br><br>这是位于XY平面的<strong>四叶草形</strong>轨道。波瓣位于各坐标轴之间，与坐标轴成45度角；XZ和YZ平面是节点面。'
+                },
+                es: {
+                    title: 'Orbital 3d_xy',
+                    desc: '<strong>Números cuánticos:</strong> n=3, l=2, m=±2<br><br>Es un orbital con forma de <strong>trébol de cuatro hojas</strong> situado en el plano XY. Sus lóbulos se orientan entre los ejes, a 45 grados, mientras que los planos XZ e YZ actúan como planos nodales.'
+                },
+                de: {
+                    title: '3d_xy-Orbital',
+                    desc: '<strong>Quantenzahlen:</strong> n=3, l=2, m=±2<br><br>Ein <strong>vierblättriges Kleeblatt</strong> in der XY-Ebene. Die Keulen liegen zwischen den Achsen und sind um 45 Grad gedreht; die XZ- und YZ-Ebenen dienen als Knotenebenen.'
+                },
+                fr: {
+                    title: 'Orbitale 3d_xy',
+                    desc: '<strong>Nombres quantiques :</strong> n=3, l=2, m=±2<br><br>Une orbitale en forme de <strong>trèfle à quatre feuilles</strong> située dans le plan XY. Les lobes sont orientés entre les axes, à 45 degrés, tandis que les plans XZ et YZ servent de plans nodaux.'
+                }
+            },
+            '4fz3': { 
+                tr: {
+                    title: '4f_z³ Orbitali', 
+                    desc: '<strong>Kuantum Sayıları:</strong> n=4, l=3, m=0<br><br>Nadir toprak elementleri olan Lantanit ve Aktinitlerin elektronik yapısını oluşturan karmaşık f orbitallerinden biridir. Z eksenindeki iki dikey lobun etrafını saran iki ayrı dairesel elektron halkasıyla, çok sayıda açısal düğüm barındırır.' 
+                },
+                en: {
+                    title: '4f_z³ Orbital', 
+                    desc: '<strong>Quantum Numbers:</strong> n=4, l=3, m=0<br><br>A complex f orbital found in Lanthanides and Actinides, featuring two lobes along the Z axis wrapped by two distinct donut rings and multiple nodal surfaces.'
+                },
+                ja: {
+                    title: '4f_z³軌道',
+                    desc: '<strong>量子数：</strong> n=4, l=3, m=0<br><br>ランタノイドやアクチノイドに見られる複雑なf軌道の一つです。Z軸に沿う2つのローブを2つの独立した電子リングが囲み、複数の節面を持ちます。'
+                },
+                zh: {
+                    title: '4f_z³轨道',
+                    desc: '<strong>量子数：</strong>n=4，l=3，m=0<br><br>这是镧系和锕系元素中常见的复杂f轨道，沿Z轴有两个波瓣，外侧环绕着两个独立的环状电子区域，并具有多个节点面。'
+                },
+                es: {
+                    title: 'Orbital 4f_z³',
+                    desc: '<strong>Números cuánticos:</strong> n=4, l=3, m=0<br><br>Es un orbital f complejo presente en lantánidos y actínidos. Tiene dos lóbulos a lo largo del eje Z, rodeados por dos anillos electrónicos distintos, y múltiples superficies nodales.'
+                },
+                de: {
+                    title: '4f_z³-Orbital',
+                    desc: '<strong>Quantenzahlen:</strong> n=4, l=3, m=0<br><br>Ein komplexes f-Orbital, das in Lanthanoiden und Actinoiden vorkommt. Es besitzt zwei Keulen entlang der Z-Achse, die von zwei getrennten Elektronenringen umgeben sind, sowie mehrere Knotenflächen.'
+                },
+                fr: {
+                    title: 'Orbitale 4f_z³',
+                    desc: '<strong>Nombres quantiques :</strong> n=4, l=3, m=0<br><br>Une orbitale f complexe présente dans les lanthanides et les actinides. Elle possède deux lobes le long de l\'axe Z, entourés de deux anneaux électroniques distincts, ainsi que plusieurs surfaces nodales.'
+                }
+            },
+            '4fxyz': { 
+                tr: {
+                    title: '4f_xyz Orbitali', 
+                    desc: '<strong>Kuantum Sayıları:</strong> n=4, l=3, m=±2<br><br>Uzayın sekiz farklı köşesine (oktantlarına) yayılmış <strong>8 adet simetrik lobdan</strong> oluşan son derece kompleks bir dalga fonksiyonudur. XY, XZ ve YZ düzlemlerinin üçü birden düğüm düzlemi (karanlık bölgeler) olarak davranır.' 
+                },
+                en: {
+                    title: '4f_xyz Orbital', 
+                    desc: '<strong>Quantum Numbers:</strong> n=4, l=3, m=±2<br><br>Highly complex wave function comprising <strong>8 symmetric lobes</strong> occupying eight octants of space. XY, XZ, and YZ planes all act as nodal surfaces.'
+                },
+                ja: {
+                    title: '4f_xyz軌道',
+                    desc: '<strong>量子数：</strong> n=4, l=3, m=±2<br><br>空間の8つの八分体に広がる<strong>8つの対称なローブ</strong>から成る非常に複雑な波動関数です。XY、XZ、YZの3平面すべてが節面として働きます。'
+                },
+                zh: {
+                    title: '4f_xyz轨道',
+                    desc: '<strong>量子数：</strong>n=4，l=3，m=±2<br><br>这是非常复杂的波函数，由分布在空间八个卦限中的<strong>8个对称波瓣</strong>组成。XY、XZ和YZ平面都充当节点面。'
+                },
+                es: {
+                    title: 'Orbital 4f_xyz',
+                    desc: '<strong>Números cuánticos:</strong> n=4, l=3, m=±2<br><br>Es una función de onda muy compleja formada por <strong>8 lóbulos simétricos</strong> distribuidos en los ocho octantes del espacio. Los planos XY, XZ e YZ actúan como superficies nodales.'
+                },
+                de: {
+                    title: '4f_xyz-Orbital',
+                    desc: '<strong>Quantenzahlen:</strong> n=4, l=3, m=±2<br><br>Eine äußerst komplexe Wellenfunktion aus <strong>8 symmetrischen Keulen</strong>, die die acht Oktanten des Raumes ausfüllen. Die Ebenen XY, XZ und YZ wirken alle als Knotenflächen.'
+                },
+                fr: {
+                    title: 'Orbitale 4f_xyz',
+                    desc: '<strong>Nombres quantiques :</strong> n=4, l=3, m=±2<br><br>Une fonction d\'onde très complexe composée de <strong>8 lobes symétriques</strong> répartis dans les huit octants de l\'espace. Les plans XY, XZ et YZ agissent tous comme des surfaces nodales.'
+                }
+            }
+        };
+
+        // UI VE ÇEKMECE KONTROLLERİ
+        const uiPanel = document.getElementById('ui-panel');
+        const panelHeader = document.getElementById('panel-header');
+        const panelTitle = document.querySelector('.panel-title');
+        let startY = 0, isDragging = false, isPanelOpen = false;
+
+        panelHeader.addEventListener('touchstart', dragStart, {passive: true});
+        panelHeader.addEventListener('mousedown', dragStart);
+        window.addEventListener('touchmove', dragMove, {passive: false});
+        window.addEventListener('mousemove', dragMove);
+        window.addEventListener('touchend', dragEnd);
+        window.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) { isDragging = true; startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY; uiPanel.style.transition = 'none'; }
+        function dragMove(e) {
+            if (!isDragging) return;
+            const currentY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+            const deltaY = currentY - startY;
+            if (isPanelOpen && deltaY > 0) uiPanel.style.transform = `translateY(${deltaY}px)`;
+            else if (!isPanelOpen && deltaY < 0) uiPanel.style.transform = `translateY(calc(100% - 70px + ${Math.max(deltaY, -(uiPanel.getBoundingClientRect().height - 70))}px))`;
+        }
+        function dragEnd(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            const deltaY = (e.type.includes('mouse') ? e.clientY : e.changedTouches[0].clientY) - startY;
+            uiPanel.style.transition = 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            uiPanel.style.transform = ''; 
+            if (isPanelOpen && deltaY > 50) { uiPanel.classList.remove('open'); isPanelOpen = false; }
+            else if (!isPanelOpen && deltaY < -50) { uiPanel.classList.add('open'); isPanelOpen = true; }
+            else if (!isPanelOpen && Math.abs(deltaY) < 10) { uiPanel.classList.toggle('open'); isPanelOpen = !isPanelOpen; }
+            
+            const lang = typeof currentLang !== 'undefined' ? currentLang : 'tr';
+            const langDict = typeof translations !== 'undefined' ? translations[lang] : null;
+            const closeText = langDict?.panel_close || "Aşağı Kaydırarak Kapat";
+            const openText = langDict?.panel_open || "Menü & Açıklamaları Aç";
+            panelTitle.textContent = isPanelOpen ? closeText : openText;
+        }
+
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 25);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; controls.dampingFactor = 0.05;
+
+        const nucleus = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        scene.add(nucleus);
+        let particleSystem = null;
+
+        function createCircleTexture() {
+            const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+            const context = canvas.getContext('2d'), center = canvas.width / 2;
+            const gradient = context.createRadialGradient(center, center, 0, center, center, center);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)'); gradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.8)'); gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            context.fillStyle = gradient; context.fillRect(0, 0, canvas.width, canvas.height);
+            const texture = new THREE.Texture(canvas); texture.needsUpdate = true; return texture;
+        }
+        const circleTexture = createCircleTexture();
+
+        // MATEMATİK MOTORU (LAGUERRE VE KÜRESEL HARMONİKLER)
+        function Laguerre0(x) { return 1; }
+        function Laguerre1(x) { return 1 - x; }
+        function Laguerre2(x) { return 1 - 2*x + (x*x)/2; }
+
+        function evalWavefunction(type, x, y, z) {
+            const r = Math.sqrt(x*x + y*y + z*z);
+            const rSafe = r === 0 ? 0.00001 : r;
+            
+            let radial = 0;
+            let angular = 0;
+            let maxR = 10;
+            let maxPsiSq = 1.0;
+
+            switch(type) {
+                case '1s':
+                    maxR = 5;
+                    radial = Laguerre0(rSafe) * Math.exp(-rSafe);  
+                    angular = 1; 
+                    maxPsiSq = 1.0;
+                    break;
+                case '2s':
+                    maxR = 10;
+                    let rho2s = rSafe / 2;
+                    radial = Laguerre1(rho2s) * Math.exp(-rho2s); 
+                    angular = 1; 
+                    maxPsiSq = 1.0; 
+                    break;
+                case '2pz':
+                    maxR = 10;
+                    radial = rSafe * Math.exp(-rSafe / 2); 
+                    angular = z / rSafe; 
+                    maxPsiSq = 0.6;
+                    break;
+                case '2px':
+                    maxR = 10;
+                    radial = rSafe * Math.exp(-rSafe / 2);
+                    angular = x / rSafe; 
+                    maxPsiSq = 0.6;
+                    break;
+                case '3dz2':
+                    maxR = 14;
+                    radial = rSafe * rSafe * Math.exp(-rSafe / 3);
+                    angular = (3 * z * z - rSafe * rSafe) / (rSafe * rSafe); 
+                    maxPsiSq = 5.0; 
+                    break;
+                case '3dxy':
+                    maxR = 14;
+                    radial = rSafe * rSafe * Math.exp(-rSafe / 3);
+                    angular = (x * y) / (rSafe * rSafe); 
+                    maxPsiSq = 2.0;
+                    break;
+                case '4fz3':
+                    maxR = 24;
+                    radial = (rSafe * rSafe * rSafe * Math.exp(-rSafe / 4)) / 100;
+                    angular = (z * (5 * z * z - 3 * rSafe * rSafe)) / (rSafe * rSafe * rSafe);
+                    maxPsiSq = 3.0;
+                    break;
+                case '4fxyz':
+                    maxR = 24;
+                    radial = (rSafe * rSafe * rSafe * Math.exp(-rSafe / 4)) / 20;
+                    angular = (x * y * z) / (rSafe * rSafe * rSafe);
+                    maxPsiSq = 1.0;
+                    break;
+            }
+
+            let psi = radial * angular;
+            return { psi, r, maxR, maxPsiSq };
+        }
+
+        function sampleSOrbital(type, maxR) {
+            const exponential = () => -Math.log(Math.max(Math.random(), Number.MIN_VALUE));
+            const scale = type === '1s' ? 0.5 : 1;
+            const radius = (exponential() + exponential() + exponential()) * scale;
+
+            if (radius > maxR) return null;
+
+            if (type === '2s') {
+                const radialFactor = 1 - radius / 2;
+                const maxRadialFactor = Math.max(1, Math.abs(1 - maxR / 2));
+                const acceptance = (radialFactor * radialFactor) / (maxRadialFactor * maxRadialFactor);
+                if (Math.random() > acceptance) return null;
+            }
+
+            const cosTheta = Math.random() * 2 - 1;
+            const sinTheta = Math.sqrt(1 - cosTheta * cosTheta);
+            const phi = Math.random() * Math.PI * 2;
+
+            return {
+                x: radius * sinTheta * Math.cos(phi),
+                y: radius * sinTheta * Math.sin(phi),
+                z: radius * cosTheta
+            };
+        }
+
+        function generateOrbitalPoints(type, targetCount) {
+            const positions = new Float32Array(targetCount * 3);
+            const colors = new Float32Array(targetCount * 3);
+
+            let accepted = 0;
+            const tempEval = evalWavefunction(type, 1, 1, 1);
+            const maxR = tempEval.maxR;
+            const maxPsiSq = tempEval.maxPsiSq;
+
+            const posColor = new THREE.Color(0xff4444); 
+            const negColor = new THREE.Color(0x3377ff); 
+
+            while (accepted < targetCount) {
+                const sampledPoint = (type === '1s' || type === '2s')
+                    ? sampleSOrbital(type, maxR)
+                    : null;
+                const x = sampledPoint ? sampledPoint.x : (Math.random() * 2 - 1) * maxR;
+                const y = sampledPoint ? sampledPoint.y : (Math.random() * 2 - 1) * maxR;
+                const z = sampledPoint ? sampledPoint.z : (Math.random() * 2 - 1) * maxR;
+
+                const { psi } = evalWavefunction(type, x, y, z);
+                const probability = psi * psi; 
+
+                // Monte Carlo Reddetme Yöntemi
+                if (sampledPoint || Math.random() < (probability / maxPsiSq)) {
+                    const idx = accepted * 3;
+                    positions[idx] = x;
+                    positions[idx + 1] = y;
+                    positions[idx + 2] = z;
+
+                    const col = psi >= 0 ? posColor : negColor;
+                    colors[idx] = col.r;
+                    colors[idx + 1] = col.g;
+                    colors[idx + 2] = col.b;
+                    accepted++;
+                }
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 0.25, vertexColors: true, transparent: true, opacity: 0.8,
+                map: circleTexture, depthWrite: false, blending: THREE.AdditiveBlending
+            });
+
+            if (particleSystem) scene.remove(particleSystem);
+            particleSystem = new THREE.Points(geometry, material);
+            scene.add(particleSystem);
+        }
+
+        const orbitalSelect = document.getElementById('orbital-select');
+        const countInput = document.getElementById('particle-count');
+        const countValDisplay = document.getElementById('count-val');
+        const speedInput = document.getElementById('rot-speed');
+        const infoTitle = document.getElementById('info-title');
+        const infoDesc = document.getElementById('info-desc');
+
+        function updateSimulation() {
+            applyTranslations(); // Dil güncellemelerini HTML elemanlarına uygula
+            
+            const selectedKey = orbitalSelect.value;
+            const count = parseInt(countInput.value);
+            const activeLang = typeof currentLang !== 'undefined' ? currentLang : 'tr';
+
+            const locale = activeLang === 'tr' ? 'tr-TR' : activeLang === 'de' ? 'de-DE' : 'en-US';
+            countValDisplay.textContent = count.toLocaleString(locale);
+            
+            if (orbitalDescriptions[selectedKey]) {
+                const data = orbitalDescriptions[selectedKey][activeLang] || orbitalDescriptions[selectedKey]['tr'];
+                infoTitle.innerHTML = data.title;
+                infoDesc.innerHTML = data.desc;
+            }
+            generateOrbitalPoints(selectedKey, count);
+        }
+
+        window.onLanguageChange = updateSimulation;
+        orbitalSelect.addEventListener('change', updateSimulation);
+        countInput.addEventListener('input', updateSimulation); 
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Sayfa yüklendiğinde çevirileri çalıştır ve simülasyonu başlat
+        window.addEventListener('DOMContentLoaded', updateSimulation);
+        updateSimulation();
+
+        // FPS VE EKRAN YENİLEME HIZINDAN BAĞIMSIZ ANİMASYON DÖNGÜSÜ
+        let lastTime = performance.now();
+
+        function animate(now) {
+            requestAnimationFrame(animate);
+
+            const currentTime = now || performance.now();
+            let dt = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            if (isNaN(dt) || dt > 0.033) dt = 0.033;
+
+            controls.update();
+            const speed = parseFloat(speedInput.value);
+            if (particleSystem && speed > 0) {
+                particleSystem.rotation.y += speed * (dt * 60);
+            }
+            renderer.render(scene, camera);
+        }
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

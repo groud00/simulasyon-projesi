@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="lz_page_title">Lorenz Çekeri - Etkileşimli Kaos</title>
+    <style>
+        :root {
+            --bg-color: #030305;
+            --surface-color: #0d0d14;
+            --surface-light: #161622;
+            --text-main: #f0f0f5;
+            --text-muted: #8a8a9e;
+            --c-cyan: #00e5ff;
+            --c-pink: #ff007f;
+            --c-yellow: #ffea00;
+            --c-green: #00ff66;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow-x: hidden;
+            overscroll-behavior-y: none;
+        }
+
+        /* Yuvarlak Geri Dön / Ana Ekran Butonu */
+        .home-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(18, 24, 38, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .home-btn:hover {
+            background: rgba(30, 41, 59, 0.9);
+            transform: scale(1.05);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .home-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Birebir Modal Onay Penceresi */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #111827;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 28px 24px 24px 24px;
+            width: 88%;
+            max-width: 340px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            transform: scale(0.92);
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.2px;
+        }
+
+        .modal-desc {
+            font-size: 13.5px;
+            color: #94a3b8;
+            margin: 0 0 24px 0;
+            line-height: 1.4;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn-cancel {
+            background: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .modal-btn-cancel:hover {
+            background: #334155;
+        }
+
+        .modal-btn-cancel:active {
+            transform: scale(0.96);
+        }
+
+        .modal-btn-confirm {
+            background: #22d3ee;
+            color: #0f172a;
+        }
+
+        .modal-btn-confirm:hover {
+            background: #06b6d4;
+        }
+
+        .modal-btn-confirm:active {
+            transform: scale(0.96);
+        }
+
+        /* Üst Etkileşim Alanı */
+        .visual-area {
+            position: relative;
+            width: 100vw;
+            height: 55vh;
+            background-color: #000;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+
+        .drag-hint {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--c-cyan);
+            letter-spacing: 1px;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        .telemetry-panel {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: min(290px, calc(100% - 32px));
+            padding: 14px;
+            background: rgba(8, 12, 24, 0.78);
+            border: 1px solid rgba(0, 229, 255, 0.28);
+            border-radius: 14px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+            z-index: 20;
+            pointer-events: none;
+            display: none;
+        }
+
+        .telemetry-panel.is-open {
+            display: block;
+        }
+
+        .telemetry-toggle {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 21;
+            min-width: 52px;
+            height: 32px;
+            padding: 0 10px;
+            border: 1px solid rgba(0, 229, 255, 0.45);
+            border-radius: 8px;
+            background: rgba(8, 12, 24, 0.82);
+            color: var(--c-cyan);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .telemetry-toggle:hover,
+        .telemetry-toggle[aria-expanded="true"] {
+            background: rgba(0, 229, 255, 0.14);
+            border-color: var(--c-cyan);
+        }
+
+        .telemetry-kicker {
+            color: var(--c-cyan);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .telemetry-item {
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+        }
+
+        .telemetry-label {
+            display: block;
+            color: var(--text-muted);
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .telemetry-value {
+            display: block;
+            color: #fff;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 15px;
+            font-weight: 700;
+            margin-top: 3px;
+        }
+
+        .regime-badge {
+            display: inline-flex;
+            margin-top: 10px;
+            padding: 5px 9px;
+            border: 1px solid var(--c-yellow);
+            border-radius: 999px;
+            color: var(--c-yellow);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .scenario-btn {
+            padding: 9px 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+
+        .scenario-btn.active, .scenario-btn:hover {
+            border-color: var(--c-cyan);
+            color: var(--c-cyan);
+            background: rgba(0, 229, 255, 0.1);
+        }
+
+        @media (max-width: 600px) {
+            .telemetry-panel {
+                top: 58px;
+                right: 12px;
+                left: 12px;
+                width: auto;
+                padding: 8px;
+                border-radius: 10px;
+            }
+            .telemetry-toggle { top: 58px; right: 12px; }
+            .telemetry-kicker { margin-bottom: 6px; font-size: 9px; }
+            .telemetry-grid { gap: 5px; }
+            .telemetry-item { padding: 5px 6px; border-radius: 6px; }
+            .telemetry-label { font-size: 8px; }
+            .telemetry-value { margin-top: 1px; font-size: 11px; }
+            .regime-badge { margin-top: 6px; padding: 3px 7px; font-size: 9px; }
+            .scenario-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        /* Alt İçerik Alanı */
+        .content-area {
+            padding: 20px;
+            height: 45vh;
+            overflow-y: auto;
+        }
+
+        .header { margin-bottom: 20px; text-align: center; }
+        h1 { font-size: 22px; font-weight: 800; margin: 0 0 6px 0; color: #fff; }
+        .subtitle { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+        .control-block {
+            background-color: var(--surface-color);
+            padding: 18px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .control-group { margin-bottom: 12px; }
+        label { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 8px; color: var(--c-cyan); }
+        input[type="range"] { width: 100%; accent-color: var(--c-pink); margin-bottom: 14px; }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 12px 8px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 11px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+
+        .btn-pink {
+            background: rgba(255, 0, 127, 0.1);
+            border: 1px solid var(--c-pink);
+            color: var(--c-pink);
+        }
+        .btn-pink:active { background: var(--c-pink); color: #fff; transform: scale(0.98); }
+
+        .btn-cyan {
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid var(--c-cyan);
+            color: var(--c-cyan);
+        }
+        .btn-cyan:active { background: var(--c-cyan); color: #000; transform: scale(0.98); }
+
+        /* Bilgi Kartları */
+        .explanation-section { display: flex; flex-direction: column; gap: 16px; padding-bottom: 30px; }
+        
+        .info-card { 
+            background-color: var(--surface-color); 
+            border-radius: 12px; 
+            padding: 16px; 
+            border-left: 4px solid;
+        }
+        .info-card.cyan { border-left-color: var(--c-cyan); }
+        .info-card.pink { border-left-color: var(--c-pink); }
+        .info-card.yellow { border-left-color: var(--c-yellow); }
+        .info-card.green { border-left-color: var(--c-green); }
+
+        .info-card h3 { margin: 0 0 8px 0; font-size: 14px; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-card p { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+        .info-card strong { color: #fff; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Yuvarlak Ok Iconlu Ana Ekrana Dön Butonu -->
+    <button class="home-btn" id="btnHome" aria-label="Ana Ekrana Dön">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+    </button>
+
+    <!-- Birebir Modal Onay Penceresi -->
+    <div class="modal-overlay" id="homeModal">
+        <div class="modal-card">
+            <h3 class="modal-title" data-i18n="lz_modal_title">Ana Ekrana Dön</h3>
+            <p class="modal-desc" data-i18n="lz_modal_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" id="btnModalCancel" data-i18n="lz_cancel">İptal</button>
+                <button class="modal-btn modal-btn-confirm" id="btnModalConfirm" data-i18n="lz_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="visual-area" id="visualArea">
+        <div class="drag-hint">👆 <span data-i18n="lz_drag_hint">Ekranda Kaydırarak Döndür</span></div>
+        <button class="telemetry-toggle" id="telemetryToggle" type="button" aria-expanded="false" aria-controls="telemetryPanel" title="Telemetriyi göster/gizle">DATA</button>
+        <div class="telemetry-panel" id="telemetryPanel">
+            <div class="telemetry-kicker" data-i18n="lz_telemetry">Lorenz Sistem Telemetrisi</div>
+            <div class="telemetry-grid">
+                <div class="telemetry-item"><span class="telemetry-label" data-i18n="lz_rho">Rho (ρ)</span><span class="telemetry-value" id="telemetryRho">28.00</span></div>
+                <div class="telemetry-item"><span class="telemetry-label" data-i18n="lz_state">Durum</span><span class="telemetry-value" id="telemetryState">AKTİF</span></div>
+                <div class="telemetry-item"><span class="telemetry-label">X / Y</span><span class="telemetry-value" id="telemetryXY">1.00 / 1.00</span></div>
+                <div class="telemetry-item"><span class="telemetry-label">Z</span><span class="telemetry-value" id="telemetryZ">20.00</span></div>
+            </div>
+            <span class="regime-badge" id="regimeBadge" data-i18n="lz_chaotic">Kaotik Rejim</span>
+        </div>
+        <canvas id="lorenzCanvas"></canvas>
+    </div>
+
+    <div class="content-area">
+        <div class="header">
+            <h1 data-i18n="lz_title">Lorenz Çekeri</h1>
+            <p class="subtitle" data-i18n="lz_subtitle">Kaos Teorisinin Kalbi</p>
+        </div>
+
+        <div class="control-block">
+            <div class="control-group">
+                <label><span data-i18n="lz_chaos_degree">Kaos Derecesi (Rho: ρ)</span> <span id="rhoVal">28</span></label>
+                <input type="range" id="rho" min="10" max="50" step="1" value="28">
+            </div>
+
+            <div class="scenario-grid">
+                <button class="scenario-btn" data-rho="10" data-i18n="lz_periodic_preset">Periyodik</button>
+                <button class="scenario-btn active" data-rho="28" data-i18n="lz_chaotic_preset">Kaotik</button>
+                <button class="scenario-btn" data-rho="45" data-i18n="lz_extreme_preset">Aşırı Kaos</button>
+            </div>
+            
+            <div class="btn-grid">
+                <button class="action-btn btn-cyan" id="btnFocusButterfly">🦋 <span data-i18n="lz_focus">Kelebek Açısına Kilitlen</span></button>
+                <button class="action-btn btn-pink" id="btnRestart">🔄 <span data-i18n="lz_reset">Yörüngeyi Sıfırla</span></button>
+            </div>
+        </div>
+
+        <div class="explanation-section">
+            <div class="info-card cyan">
+                <h3 data-i18n="lz_what_title">Nedir? (Kaos Teorisi)</h3>
+                <p data-i18n="lz_what_desc">1963'te meteorolog Edward Lorenz hava durumunu bilgisayarda modellerken bir şey fark etti: Başlangıç verilerindeki <strong>0.0001'lik bir yuvarlama hatası</strong> bile bir süre sonra tamamen farklı bir hava durumu tahmini üretiyordu. Bu simülasyon, o hava akımlarının matematiksel olarak 3 boyutlu uzaya dökülmüş halidir.</p>
+            </div>
+
+            <div class="info-card pink">
+                <h3 data-i18n="lz_butterfly_title">Kelebek Etkisi</h3>
+                <p data-i18n="lz_butterfly_desc"><strong>"Brezilya'daki bir kelebeğin kanat çırpması, Teksas'ta bir kasırgaya neden olabilir."</strong> Simülasyonu her sıfırladığında, çizim noktası mikroskobik bir farkla yeniden başlar. Çizgilerin oluşturduğu bu iki kanatlı yapıya "Garip Çeker" denir. Şekil hep bir kelebeğe benzer ama çizgiler <strong>asla kendilerini tekrar etmez ve asla kesişmez.</strong> Eğer kesişselerdi, sistem sonsuz bir kısır döngüye girerdi.</p>
+            </div>
+
+            <div class="info-card yellow">
+                <h3 data-i18n="lz_deterministic_title">Deterministik Kaos</h3>
+                <p data-i18n="lz_deterministic_desc">Bu sistem rastgele (random) değildir! Her şey kesin matematiksel kurallara (Türevsel denklemlere) bağlıdır. Ancak kurallar o kadar hassastır ki, geleceği uzun vadede tahmin etmek imkansızdır. Düzenin içinden kaos, kaosun içinden ise (kelebek şeklinde) muazzam bir düzen doğar.</p>
+            </div>
+
+            <div class="info-card green">
+                <h3 data-i18n="lz_uses_title">Nerede Kullanılır?</h3>
+                <p data-i18n="lz_uses_desc">Hava durumu tahminlerinin neden sadece birkaç gün tutarlı kalıp 10 günden sonra tamamen çuvalladığının matematiksel kanıtıdır. Ayrıca <strong>Borsa analizlerinde, kalp ritmi incelemelerinde, akışkanlar mekaniğinde (su/hava türbülansı) ve hatta şifreleme (kriptografi) teknolojilerinde</strong> doğanın bu rastgele gibi görünen ama kurallı sistemleri kullanılır.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="lang.js"></script>
+    <script>
+        // --- ANA EKRANA DÖN & MODAL MANTIĞI ---
+        const btnHome = document.getElementById('btnHome');
+        const homeModal = document.getElementById('homeModal');
+        const btnModalCancel = document.getElementById('btnModalCancel');
+        const btnModalConfirm = document.getElementById('btnModalConfirm');
+
+        btnHome.addEventListener('click', () => {
+            homeModal.classList.add('active');
+        });
+
+        btnModalCancel.addEventListener('click', () => {
+            homeModal.classList.remove('active');
+        });
+
+        homeModal.addEventListener('click', (e) => {
+            if (e.target === homeModal) {
+                homeModal.classList.remove('active');
+            }
+        });
+
+        btnModalConfirm.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        // --- SİMÜLASYON KODLARI ---
+        const canvas = document.getElementById('lorenzCanvas');
+        const ctx = canvas.getContext('2d');
+        const visualArea = document.getElementById('visualArea');
+        
+        let width, height;
+        let scale = 10;
+
+        // Lorenz Sabitleri
+        const sigma = 10;
+        let rho = 28;
+        const beta = 8 / 3;
+
+        // Simülasyon Ayarları
+        const dt = 0.008; 
+        const maxPoints = 2500; 
+        let points = [];
+        let hue = 0;
+
+        // Kamera Açıları
+        let angleX = 0; 
+        let angleY = 0; 
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let autoRotate = true; 
+
+        // Delta Time Hesaplaması İçin Değişkenler
+        let lastTime = performance.now();
+
+        // Başlangıç
+        let currentX = 1, currentY = 1, currentZ = 20;
+
+        function resize() {
+            width = visualArea.clientWidth;
+            height = visualArea.clientHeight;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            scale = Math.min(width, height) / 55;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Runge-Kutta Matematiği
+        function lorenz(x, y, z) {
+            return { dx: sigma * (y - x), dy: x * (rho - z) - y, dz: x * y - beta * z };
+        }
+
+        function rk4(x, y, z, dt) {
+            let k1 = lorenz(x, y, z);
+            let k2 = lorenz(x + k1.dx * dt/2, y + k1.dy * dt/2, z + k1.dz * dt/2);
+            let k3 = lorenz(x + k2.dx * dt/2, y + k2.dy * dt/2, z + k2.dz * dt/2);
+            let k4 = lorenz(x + k3.dx * dt, y + k3.dy * dt, z + k3.dz * dt);
+            return {
+                x: x + (dt/6) * (k1.dx + 2*k2.dx + 2*k3.dx + k4.dx),
+                y: y + (dt/6) * (k1.dy + 2*k2.dy + 2*k3.dy + k4.dy),
+                z: z + (dt/6) * (k1.dz + 2*k2.dz + 2*k3.dz + k4.dz)
+            };
+        }
+
+        function resetSim() {
+            currentX = 1 + (Math.random() * 0.1);
+            currentY = 1 + (Math.random() * 0.1);
+            currentZ = rho;
+            points = [];
+            autoRotate = true;
+        }
+
+        document.getElementById('rho').addEventListener('input', (e) => {
+            rho = parseFloat(e.target.value);
+            document.getElementById('rhoVal').innerText = rho;
+            document.querySelectorAll('.scenario-btn').forEach(button => button.classList.toggle('active', Number(button.dataset.rho) === rho));
+            resetSim();
+        });
+
+        document.querySelectorAll('.scenario-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const nextRho = Number(button.dataset.rho);
+                document.getElementById('rho').value = nextRho;
+                rho = nextRho;
+                document.getElementById('rhoVal').innerText = nextRho;
+                document.querySelectorAll('.scenario-btn').forEach(item => item.classList.toggle('active', item === button));
+                resetSim();
+            });
+        });
+
+        document.getElementById('btnRestart').addEventListener('click', resetSim);
+
+        const telemetryToggle = document.getElementById('telemetryToggle');
+        const telemetryPanel = document.getElementById('telemetryPanel');
+        telemetryToggle.addEventListener('click', () => {
+            const isOpen = telemetryPanel.classList.toggle('is-open');
+            telemetryToggle.setAttribute('aria-expanded', String(isOpen));
+        });
+
+        // --- KELEBEK AÇISINA KİLİTLENME BUTONU ---
+        document.getElementById('btnFocusButterfly').addEventListener('click', () => {
+            autoRotate = false; 
+            angleX = 0;         
+            angleY = -Math.PI / 2; 
+        });
+
+        // --- İNTERAKTİF DOKUNMATİK KONTROLLER ---
+        function handleStart(x, y) {
+            isDragging = true;
+            autoRotate = false; // Dokunulduğunda dönmeyi durdur
+            lastMouseX = x;
+            lastMouseY = y;
+        }
+
+        function handleMove(x, y) {
+            if (!isDragging) return;
+            const deltaX = x - lastMouseX;
+            const deltaY = y - lastMouseY;
+
+            angleX += deltaX * 0.01;
+            angleY -= deltaY * 0.01; 
+
+            lastMouseX = x;
+            lastMouseY = y;
+        }
+
+        function handleEnd() { 
+            isDragging = false; 
+            autoRotate = true; // Parmağı veya fareyi bıraktığında dönmeye devam etsin
+        }
+
+        canvas.addEventListener('mousedown', (e) => handleStart(e.clientX, e.clientY));
+        window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', handleEnd);
+
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleStart(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); }, {passive: false});
+        canvas.addEventListener('touchend', handleEnd);
+
+
+        // --- ÇİZİM VE 3D MOTORU (DELTA TIME ENTEGRASYONLU) ---
+        function draw(currentTime) {
+            if (!currentTime) currentTime = performance.now();
+            let deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            // Sekme geçişleri veya kare düşüşlerinde aşırı sıçramayı önleme
+            if (deltaTime > 0.1) deltaTime = 0.1;
+
+            // 60 FPS referans katsayısı
+            const dtFactor = deltaTime * 60;
+
+            document.getElementById('telemetryRho').innerText = rho.toFixed(2);
+            document.getElementById('telemetryXY').innerText = `${currentX.toFixed(2)} / ${currentY.toFixed(2)}`;
+            document.getElementById('telemetryZ').innerText = currentZ.toFixed(2);
+            document.getElementById('telemetryState').innerText = t(points.length > 80 ? 'lz_active' : 'lz_warming');
+            const regimeBadge = document.getElementById('regimeBadge');
+            if (rho < 24) {
+                regimeBadge.innerText = t('lz_periodic');
+                regimeBadge.style.borderColor = 'var(--c-green)';
+                regimeBadge.style.color = 'var(--c-green)';
+            } else if (rho < 30) {
+                regimeBadge.innerText = t('lz_chaotic');
+                regimeBadge.style.borderColor = 'var(--c-yellow)';
+                regimeBadge.style.color = 'var(--c-yellow)';
+            } else {
+                regimeBadge.innerText = t('lz_extreme');
+                regimeBadge.style.borderColor = 'var(--c-pink)';
+                regimeBadge.style.color = 'var(--c-pink)';
+            }
+
+            // Delta time oranına göre fizik adımlarını dinamik hesapla
+            let steps = Math.max(1, Math.round(4 * dtFactor));
+            for(let i = 0; i < steps; i++) {
+                let nextPos = rk4(currentX, currentY, currentZ, dt);
+                currentX = nextPos.x;
+                currentY = nextPos.y;
+                currentZ = nextPos.z;
+                
+                points.push({x: currentX, y: currentY, z: currentZ});
+                if (points.length > maxPoints) points.shift(); 
+            }
+
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+
+            // Sadece autoRotate true ise kamera delta time ile orantılı kendi kendine döner
+            if (autoRotate) angleX += 0.003 * dtFactor; 
+
+            if(points.length > 0) {
+                ctx.beginPath();
+                
+                let zCenter = rho - 1;
+                
+                let cosX = Math.cos(angleX); let sinX = Math.sin(angleX);
+                let cosY = Math.cos(angleY); let sinY = Math.sin(angleY);
+
+                for(let i = 0; i < points.length; i++) {
+                    let p = points[i];
+                    
+                    let px = p.x;
+                    let py = p.y;
+                    let pz = p.z - zCenter;
+
+                    let rotX1 = px * cosX - pz * sinX;
+                    let rotZ1 = px * sinX + pz * cosX;
+
+                    let rotY2 = py * cosY - rotZ1 * sinY;
+                    let rotZ2 = py * sinY + rotZ1 * cosY;
+
+                    let screenX = (width / 2) + (rotX1 * scale);
+                    let screenY = (height / 2) - (rotY2 * scale);
+
+                    if (i === 0) ctx.moveTo(screenX, screenY);
+                    else ctx.lineTo(screenX, screenY);
+                }
+
+                hue += 0.15 * dtFactor;
+                if(hue > 360) hue = 0;
+
+                ctx.lineWidth = 1.6;
+                ctx.strokeStyle = `hsl(${hue}, 100%, 65%)`;
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        requestAnimationFrame(draw);
+    </script>
+</body>
+</html>

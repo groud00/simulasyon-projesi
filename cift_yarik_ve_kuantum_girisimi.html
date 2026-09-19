@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="qs_title">Gelişmiş Kuantum Girişim Simülasyonu</title>
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: #141923;
+            --text: #e1e6f0;
+            --text-muted: #94a3b8;
+            --accent: #4da6ff;
+            --accent-alt: #ff9933;
+            --danger: #ff4d4d;
+            --border: #222b3b;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Sol Üst Geri Butonu */
+        .back-btn {
+            position: fixed;
+            top: 14px;
+            left: 14px;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background-color: #141923;
+            border: 1px solid var(--border);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transition: transform 0.2s, background-color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .back-btn:active {
+            transform: scale(0.92);
+            background-color: #1a2233;
+        }
+        .back-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Onay Modalı */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(5, 8, 13, 0.82);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            padding: 20px;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-card {
+            background-color: #141923;
+            border: 1px solid #222b3b;
+            border-radius: 20px;
+            padding: 24px 20px;
+            width: 100%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .modal-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0;
+        }
+        .modal-text {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            margin: 0 0 8px 0;
+            line-height: 1.4;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .modal-btn {
+            flex: 1;
+            padding: 12px 0;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.92rem;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .modal-btn-cancel {
+            background-color: #222b3b;
+            color: #e1e6f0;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .modal-btn-confirm {
+            background-color: #29b6f6;
+            color: #000000;
+        }
+        .modal-btn:active {
+            transform: scale(0.96);
+        }
+
+        .wrapper {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        h2 { 
+            font-size: 1.15rem; 
+            color: var(--accent); 
+            margin: 0; 
+            text-align: center; 
+            letter-spacing: 1px; 
+            text-transform: uppercase;
+        }
+        #panel {
+            background-color: var(--panel-bg);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+        }
+        .control-group { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 4px; 
+        }
+        label { 
+            font-size: 0.85rem; 
+            color: var(--text-muted); 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+        }
+        input[type="range"] { 
+            width: 100%; 
+            accent-color: var(--accent); 
+            height: 24px; 
+        }
+        .electron-mode input[type="range"] {
+            accent-color: var(--accent-alt);
+        }
+        select, button {
+            background-color: #1a2233;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            width: 100%;
+            outline: none;
+            transition: all 0.2s;
+        }
+        button { font-weight: bold; }
+        button:active { background-color: var(--accent); color: #000; transform: translateY(1px); }
+        
+        .canvas-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            background-color: var(--panel-bg);
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+        }
+        canvas {
+            background-color: #000;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            width: 100%;
+            height: auto;
+            image-rendering: pixelated;
+        }
+        #simCanvas { aspect-ratio: 4 / 3; }
+        #screenCanvas { aspect-ratio: 6 / 1; }
+        
+        .counter-box {
+            width: 100%;
+            background-color: #1a2233;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+        #hitCount {
+            color: var(--accent);
+            font-weight: bold;
+            font-size: 1.2rem;
+            display: inline-block;
+            transition: all 0.3s ease;
+            margin-left: 6px;
+        }
+        .milestone {
+            color: #fff !important;
+            transform: scale(1.4);
+            text-shadow: 0 0 10px var(--accent);
+        }
+
+        .info-panel {
+            background: var(--panel-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+        }
+        .info-panel h3 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .info-item {
+            font-size: 0.8rem;
+            line-height: 1.5;
+            color: var(--text-muted);
+        }
+        .info-item strong {
+            color: #fff;
+            display: block;
+            margin-bottom: 2px;
+            font-size: 0.85rem;
+        }
+        .highlight-text {
+            color: var(--accent);
+            font-weight: bold;
+        }
+        .electron-mode-text .highlight-text {
+            color: var(--accent-alt);
+        }
+        .danger-text {
+            color: var(--danger);
+        }
+        .calc-note {
+            font-size: 0.75rem;
+            color: var(--accent-alt);
+            margin-top: -2px;
+            font-style: italic;
+        }
+    </style>
+    <script src="lang.js"></script>
+</head>
+<body>
+
+    <!-- Sol Üst Geri Butonu -->
+    <button class="back-btn" id="backBtn" aria-label="Geri Dön" data-i18n-aria-label="qs_back_aria">
+        <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </button>
+
+    <!-- Ana Ekran Onay Modalı -->
+    <div class="modal-overlay" id="exitModal">
+        <div class="modal-card">
+            <h3 class="modal-title" data-i18n="modal_exit_title">Ana Ekrana Dön</h3>
+            <p class="modal-text" data-i18n="modal_exit_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" id="cancelExitBtn" data-i18n="modal_cancel">İptal</button>
+                <button class="modal-btn modal-btn-confirm" id="confirmExitBtn" data-i18n="modal_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="wrapper">
+        <h2 data-i18n="qs_heading">Gelişmiş Kuantum Simülasyonu</h2>
+        
+        <div id="panel">
+            <div class="control-group">
+                <label data-i18n="qs_lbl_particle_type">Parçacık Türü:</label>
+                <select id="particleType">
+                    <option value="photon" data-i18n="qs_opt_photon">Işık (Foton) - Kütlesiz</option>
+                    <option value="electron" data-i18n="qs_opt_electron">Madde (Elektron) - Kütleli</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label data-i18n="qs_lbl_view_mode">Görünüm Modu:</label>
+                <select id="modeSelect">
+                    <option value="wave" data-i18n="qs_opt_wave">Klasik Dalga Modu</option>
+                    <option value="quantum" data-i18n="qs_opt_quantum">Kuantum Parçacık Modu</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label data-i18n="qs_lbl_exp_mode">Deney Modu:</label>
+                <select id="expMode">
+                    <option value="double" data-i18n="qs_opt_double">Çift Yarık (Girişim Deseni)</option>
+                    <option value="single" data-i18n="qs_opt_single">Tek Yarık (Sadece Kırınım)</option>
+                    <option value="detector" data-i18n="qs_opt_detector">Çift Yarık + Dedektör (Gözlemci Etkisi)</option>
+                </select>
+            </div>
+
+            <div class="control-group" id="speedModeGroup" style="display: none;">
+                <label data-i18n="qs_lbl_speed_mode">Gönderim Hızı:</label>
+                <select id="speedMode">
+                    <option value="fast" data-i18n="qs_opt_fast">Hızlı (Sürekli Ateşleme)</option>
+                    <option value="slow" data-i18n="qs_opt_slow">Yavaş (Aralıklı Ateşleme)</option>
+                    <option value="single" data-i18n="qs_opt_single_particle">Tekil (Ekrana Çarpmayı Bekle)</option>
+                </select>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border); width: 100%; margin: 4px 0;">
+
+            <!-- Foton Kontrolleri -->
+            <div class="control-group" id="photonControls">
+                <label><span data-i18n="qs_lbl_lambda">Dalga Boyu (λ):</span> <span id="val-lambda">532 nm</span></label>
+                <input type="range" id="param-lambda" min="380" max="750" value="532">
+            </div>
+
+            <!-- Elektron Kontrolleri -->
+            <div class="control-group electron-mode" id="electronControls" style="display: none;">
+                <label><span data-i18n="qs_lbl_energy">Elektron Enerjisi (E):</span> <span id="val-energy">150 eV</span></label>
+                <input type="range" id="param-energy" min="10" max="1000" value="150" step="10">
+                <div class="calc-note"><span data-i18n="qs_calc_note">de Broglie (λ) = h / √(2mE) ≈</span> <span id="val-debroglie">0.100</span> nm</div>
+            </div>
+
+            <div class="control-group" id="d-group">
+                <label><span data-i18n="qs_lbl_distance">Yarık Mesafesi (d):</span> <span id="val-distance">100 μm</span></label>
+                <input type="range" id="param-distance" min="50" max="250" value="100" step="1">
+            </div>
+            
+            <div class="control-group" id="a-group">
+                <label><span data-i18n="qs_lbl_width">Yarık Genişliği (a):</span> <span id="val-width">20 μm</span></label>
+                <input type="range" id="param-width" min="5" max="50" value="20" step="1">
+            </div>
+
+            <button id="resetBtn" data-i18n="qs_btn_reset">Ekranı ve Grafiği Sıfırla</button>
+        </div>
+
+        <div class="canvas-box">
+            <canvas id="simCanvas" width="360" height="270"></canvas>
+            <canvas id="screenCanvas" width="360" height="60"></canvas>
+            
+            <div class="counter-box" id="hitCounterBox" style="display: none;">
+                <span data-i18n="qs_lbl_hits">Dedektöre Ulaşan Parçacık:</span> <span id="hitCount">0</span>
+            </div>
+        </div>
+
+        <!-- GELİŞMİŞ BİLGİ PANELİ -->
+        <div class="info-panel" id="infoPanel">
+            <h3 data-i18n="qs_info_title">🔬 Bilimsel Açıklamalar</h3>
+            
+            <div class="info-item">
+                <strong data-i18n="qs_info_duality_title">Dalga - Parçacık İkiliği</strong>
+                <span data-i18n="qs_info_duality_desc">Klasik fizikte ışık bir dalga gibi davranır. Ancak "Kuantum Modu"nda parçacıkları (foton/elektron) tek tek gönderdiğimizde bile zamanla ekranda dalga modeliyle birebir aynı <span class="highlight-text">girişim deseni</span> oluşur. Parçacığın olasılık genlikleri iki yarıktan geçerek girişim oluşturur.</span>
+            </div>
+
+            <div class="info-item">
+                <strong data-i18n="qs_info_observer_title">Gözlemci Etkisi (Dalga Fonksiyonunun Çökmesi)</strong>
+                <span data-i18n="qs_info_observer_desc">Deneye bir <span class="danger-text">Dedektör</span> ekleyip parçacığın hangi yarıktan geçtiğini ölçtüğünüzde kuantum büyüsü bozulur. Ölçüm yapmak dalga fonksiyonunu çökertir; parçacıklar klasik bilardo topları gibi davranmaya başlar ve girişim deseni kaybolarak yerini iki belirgin çizgiye bırakır.</span>
+            </div>
+
+            <div class="info-item" id="physicsAccuracyInfo">
+                <strong data-i18n="qs_info_physics_title">Fizik Motoru (SI Birimleri)</strong>
+                <span data-i18n="qs_info_physics_desc">Ekrana yansıyan grafiksel dağılım; gerçek L=1m perde mesafesi, Planck sabiti (h) ve gerçek parçacık kütleleri kullanılarak hesaplanmaktadır.</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Geri Dön Butonu ve Modal İşlemleri
+        const backBtn = document.getElementById('backBtn');
+        const exitModal = document.getElementById('exitModal');
+        const cancelExitBtn = document.getElementById('cancelExitBtn');
+        const confirmExitBtn = document.getElementById('confirmExitBtn');
+
+        backBtn.addEventListener('click', () => {
+            exitModal.classList.add('active');
+        });
+
+        cancelExitBtn.addEventListener('click', () => {
+            exitModal.classList.remove('active');
+        });
+
+        confirmExitBtn.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        const simCanvas = document.getElementById('simCanvas');
+        const simCtx = simCanvas.getContext('2d');
+        const screenCanvas = document.getElementById('screenCanvas');
+        const screenCtx = screenCanvas.getContext('2d');
+
+        const particleType = document.getElementById('particleType');
+        const photonControls = document.getElementById('photonControls');
+        const electronControls = document.getElementById('electronControls');
+        const paramLambda = document.getElementById('param-lambda');
+        const paramEnergy = document.getElementById('param-energy');
+        const paramDistance = document.getElementById('param-distance');
+        const paramWidth = document.getElementById('param-width');
+        
+        const modeSelect = document.getElementById('modeSelect');
+        const expModeSelect = document.getElementById('expMode');
+        const speedMode = document.getElementById('speedMode');
+        const speedModeGroup = document.getElementById('speedModeGroup');
+        const resetBtn = document.getElementById('resetBtn');
+        const hitCounterBox = document.getElementById('hitCounterBox');
+        const hitCountSpan = document.getElementById('hitCount');
+        const infoPanel = document.getElementById('infoPanel');
+
+        // Sabitler
+        const H_PLANCK = 6.62607015e-34;
+        const M_ELECTRON = 9.10938356e-31;
+        const EV_TO_JOULE = 1.60217662e-19;
+
+        let time = 0;
+        let particleHits = new Array(screenCanvas.width).fill(0);
+        let maxHits = 1;
+        let particles = [];
+        
+        let totalHits = 0;
+        let frameCounter = 0;
+        const milestones = [10, 100, 1000, 10000, 50000];
+
+        const waveImageData = simCtx.createImageData(simCanvas.width, simCanvas.height);
+
+        particleType.addEventListener('change', () => {
+            const isElectron = particleType.value === 'electron';
+            
+            photonControls.style.display = isElectron ? 'none' : 'flex';
+            electronControls.style.display = isElectron ? 'flex' : 'none';
+            
+            const dGroup = document.getElementById('d-group');
+            const aGroup = document.getElementById('a-group');
+
+            if (isElectron) {
+                dGroup.classList.add('electron-mode');
+                aGroup.classList.add('electron-mode');
+                infoPanel.classList.add('electron-mode-text');
+                
+                paramDistance.min = 1; paramDistance.max = 50; paramDistance.step = 1; paramDistance.value = 10;
+                paramWidth.min = 0.1; paramWidth.max = 10; paramWidth.step = 0.1; paramWidth.value = 2;
+                document.documentElement.style.setProperty('--accent', '#ff9933');
+            } else {
+                dGroup.classList.remove('electron-mode');
+                aGroup.classList.remove('electron-mode');
+                infoPanel.classList.remove('electron-mode-text');
+                
+                paramDistance.min = 50; paramDistance.max = 250; paramDistance.step = 1; paramDistance.value = 100;
+                paramWidth.min = 5; paramWidth.max = 50; paramWidth.step = 1; paramWidth.value = 20;
+                document.documentElement.style.setProperty('--accent', '#4da6ff');
+            }
+            
+            updateValues();
+            resetScreen();
+        });
+
+        function updateValues() {
+            if (particleType.value === 'photon') {
+                document.getElementById('val-lambda').innerText = paramLambda.value + ' nm';
+                document.getElementById('val-distance').innerText = paramDistance.value + ' μm';
+                document.getElementById('val-width').innerText = paramWidth.value + ' μm';
+            } else {
+                document.getElementById('val-energy').innerText = paramEnergy.value + ' eV';
+                document.getElementById('val-distance').innerText = paramDistance.value + ' nm';
+                document.getElementById('val-width').innerText = paramWidth.value + ' nm';
+                
+                const E_J = parseFloat(paramEnergy.value) * EV_TO_JOULE;
+                const lambda_m = H_PLANCK / Math.sqrt(2 * M_ELECTRON * E_J);
+                const lambda_nm = lambda_m * 1e9;
+                document.getElementById('val-debroglie').innerText = lambda_nm.toFixed(4);
+            }
+        }
+
+        function updateUI() {
+            if (modeSelect.value === 'quantum') {
+                speedModeGroup.style.display = 'flex';
+                hitCounterBox.style.display = 'block';
+            } else {
+                speedModeGroup.style.display = 'none';
+                hitCounterBox.style.display = 'none';
+            }
+        }
+
+        [paramLambda, paramEnergy, paramDistance, paramWidth].forEach(el => {
+            el.addEventListener('input', () => { updateValues(); resetScreen(); });
+        });
+
+        modeSelect.addEventListener('change', () => { updateUI(); resetScreen(); });
+        expModeSelect.addEventListener('change', resetScreen);
+        speedMode.addEventListener('change', resetScreen);
+        resetBtn.addEventListener('click', resetScreen);
+
+        function resetScreen() {
+            particleHits.fill(0);
+            maxHits = 1;
+            particles = [];
+            totalHits = 0;
+            frameCounter = 0;
+            hitCountSpan.innerText = totalHits;
+            screenCtx.clearRect(0, 0, screenCanvas.width, screenCanvas.height);
+        }
+
+        // GERÇEK FİZİKSEL HESAPLAMA (SI Birimleri)
+        function getIntensityAtY(y_px) {
+            const exp = expModeSelect.value;
+            const L = 1.0; 
+            const screenHeightMeters = 0.05; 
+            const metersPerPixel = screenHeightMeters / simCanvas.height;
+            const centerY = simCanvas.height / 2;
+            const y_meters = (y_px - centerY) * metersPerPixel;
+            
+            const sinTheta = y_meters / Math.sqrt(L*L + y_meters*y_meters);
+            const pi = Math.PI;
+            
+            let lambda, d, a;
+
+            if (particleType.value === 'photon') {
+                lambda = parseFloat(paramLambda.value) * 1e-9;
+                d = parseFloat(paramDistance.value) * 1e-6;
+                a = parseFloat(paramWidth.value) * 1e-6;
+            } else {
+                const E_J = parseFloat(paramEnergy.value) * EV_TO_JOULE;
+                lambda = H_PLANCK / Math.sqrt(2 * M_ELECTRON * E_J);
+                d = parseFloat(paramDistance.value) * 1e-9;
+                a = parseFloat(paramWidth.value) * 1e-9;
+            }
+            
+            let alpha = (pi * a * sinTheta) / lambda;
+            let diffraction = (alpha === 0) ? 1 : Math.pow(Math.sin(alpha) / alpha, 2);
+            
+            if (exp === 'single' || exp === 'detector') {
+                return diffraction; 
+            } else {
+                let phase = (pi * d * sinTheta) / lambda;
+                let interference = Math.pow(Math.cos(phase), 2);
+                return interference * diffraction;
+            }
+        }
+
+        // Çizim İçin Görsel Ölçekleme
+        function getVisualScales() {
+            let lambda_px, d_px, a_px;
+            if (particleType.value === 'photon') {
+                lambda_px = parseFloat(paramLambda.value) / 15; 
+                d_px = parseFloat(paramDistance.value) * 0.5;
+                a_px = parseFloat(paramWidth.value) * 0.5;
+            } else {
+                const E_eV = parseFloat(paramEnergy.value);
+                lambda_px = 200 / Math.sqrt(E_eV);
+                if(lambda_px < 8) lambda_px = 8;
+                d_px = parseFloat(paramDistance.value) * 2; 
+                a_px = parseFloat(paramWidth.value) * 5;      
+            }
+            return { lambda_px, d_px, a_px };
+        }
+
+        function drawWaveMode() {
+            const width = simCanvas.width;
+            const height = simCanvas.height;
+            const exp = expModeSelect.value;
+            const { lambda_px, d_px, a_px } = getVisualScales();
+            const colorFactor = particleType.value === 'photon' ? [0.15, 0.4, 1.0] : [1.0, 0.6, 0.2]; 
+            
+            const k = (2 * Math.PI) / lambda_px;
+            const omega = 0.4;
+            
+            const slitX = 70;
+            const slit1Y = (exp === 'single') ? (height / 2) : (height / 2 - d_px / 2);
+            const slit2Y = (exp === 'single') ? (height / 2) : (height / 2 + d_px / 2);
+
+            const data = waveImageData.data;
+            const obsText = typeof t === 'function' ? t('qs_observation') : 'Gözlem';
+
+            for (let x = 0; x < width; x++) {
+                for (let y = 0; y < height; y++) {
+                    const index = (y * width + x) * 4;
+                    
+                    if (x < slitX) {
+                        const amp = Math.sin(k * x - time * omega);
+                        const intensity = (amp + 1) * 127;
+                        data[index] = intensity * colorFactor[0];
+                        data[index+1] = intensity * colorFactor[1];
+                        data[index+2] = intensity * colorFactor[2];
+                        data[index+3] = 255;
+                    } else {
+                        if (exp === 'single') {
+                            const dist = Math.sqrt(Math.pow(x - slitX, 2) + Math.pow(y - slit1Y, 2));
+                            const atten = 1 / Math.sqrt(dist + 1);
+                            const wave = Math.sin(k * dist - time * omega) * atten;
+                            const intensity = Math.pow(wave * 12, 2) * 255;
+                            
+                            data[index] = intensity * (colorFactor[0] * 0.7);
+                            data[index+1] = intensity * (colorFactor[1] * 1.5);
+                            data[index+2] = intensity * colorFactor[2];
+                            data[index+3] = 255;
+                        } else if (exp === 'detector') {
+                            const dist1 = Math.sqrt(Math.pow(x - slitX, 2) + Math.pow(y - slit1Y, 2));
+                            const dist2 = Math.sqrt(Math.pow(x - slitX, 2) + Math.pow(y - slit2Y, 2));
+                            const atten1 = 1 / Math.sqrt(dist1 + 1);
+                            const atten2 = 1 / Math.sqrt(dist2 + 1);
+                            const i1 = Math.pow(Math.sin(k * dist1 - time * omega) * atten1 * 12, 2);
+                            const i2 = Math.pow(Math.sin(k * dist2 - time * omega) * atten2 * 12, 2);
+                            const intensity = (i1 + i2) * 127; 
+                            
+                            data[index] = intensity * (colorFactor[0] * 0.7);
+                            data[index+1] = intensity * (colorFactor[1] * 1.5);
+                            data[index+2] = intensity * colorFactor[2];
+                            data[index+3] = 255;
+                        } else {
+                            const dist1 = Math.sqrt(Math.pow(x - slitX, 2) + Math.pow(y - slit1Y, 2));
+                            const dist2 = Math.sqrt(Math.pow(x - slitX, 2) + Math.pow(y - slit2Y, 2));
+                            const atten1 = 1 / Math.sqrt(dist1 + 1);
+                            const atten2 = 1 / Math.sqrt(dist2 + 1);
+                            const wave1 = Math.sin(k * dist1 - time * omega) * atten1;
+                            const wave2 = Math.sin(k * dist2 - time * omega) * atten2;
+                            const superposition = wave1 + wave2;
+                            const intensity = Math.pow(superposition * 12, 2) * 255;
+                            
+                            data[index] = intensity * (colorFactor[0] * 0.7);
+                            data[index+1] = intensity * (colorFactor[1] * 1.5);
+                            data[index+2] = intensity * colorFactor[2];
+                            data[index+3] = 255;
+                        }
+                    }
+                }
+            }
+
+            simCtx.putImageData(waveImageData, 0, 0);
+
+            simCtx.fillStyle = '#141923';
+            simCtx.fillRect(slitX - 4, 0, 8, height);
+            
+            if (exp === 'single') {
+                simCtx.clearRect(slitX - 4, slit1Y - a_px/2, 8, a_px);
+            } else {
+                simCtx.clearRect(slitX - 4, slit1Y - a_px/2, 8, a_px);
+                simCtx.clearRect(slitX - 4, slit2Y - a_px/2, 8, a_px);
+                
+                if (exp === 'detector') {
+                    simCtx.fillStyle = '#ff4d4d';
+                    
+                    simCtx.beginPath(); simCtx.arc(slitX + 10, slit1Y, 4, 0, Math.PI*2); simCtx.fill();
+                    simCtx.fillStyle = 'rgba(255, 77, 77, 0.9)'; simCtx.font = '10px Arial';
+                    simCtx.fillText(obsText, slitX + 16, slit1Y + 3);
+                    
+                    simCtx.fillStyle = '#ff4d4d';
+                    simCtx.beginPath(); simCtx.arc(slitX + 10, slit2Y, 4, 0, Math.PI*2); simCtx.fill();
+                    simCtx.fillStyle = 'rgba(255, 77, 77, 0.9)'; 
+                    simCtx.fillText(obsText, slitX + 16, slit2Y + 3);
+                }
+            }
+        }
+
+        function drawQuantumMode(deltaFactor = 1) {
+            simCtx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            simCtx.fillRect(0, 0, simCanvas.width, simCanvas.height);
+
+            const exp = expModeSelect.value;
+            const { d_px, a_px } = getVisualScales();
+            const slitX = 70;
+            const obsText = typeof t === 'function' ? t('qs_observation') : 'Gözlem';
+            
+            const slit1Y = (exp === 'single') ? simCanvas.height / 2 : simCanvas.height / 2 - d_px / 2;
+            const slit2Y = (exp === 'single') ? simCanvas.height / 2 : simCanvas.height / 2 + d_px / 2;
+            
+            simCtx.fillStyle = '#222b3b';
+            simCtx.fillRect(slitX - 4, 0, 8, simCanvas.height);
+            
+            if (exp === 'single') {
+                simCtx.clearRect(slitX - 4, slit1Y - a_px/2, 8, a_px);
+            } else {
+                simCtx.clearRect(slitX - 4, slit1Y - a_px/2, 8, a_px);
+                simCtx.clearRect(slitX - 4, slit2Y - a_px/2, 8, a_px);
+                
+                if (exp === 'detector') {
+                    simCtx.fillStyle = '#475569'; 
+                    simCtx.beginPath(); simCtx.arc(slitX + 10, slit1Y, 4, 0, Math.PI*2); simCtx.fill();
+                    simCtx.beginPath(); simCtx.arc(slitX + 10, slit2Y, 4, 0, Math.PI*2); simCtx.fill();
+                }
+            }
+
+            let particlesToSpawn = 0;
+            const currentSpeedMode = speedMode.value;
+
+            if (currentSpeedMode === 'fast') {
+                particlesToSpawn = Math.round(2 * deltaFactor);
+                if (particlesToSpawn < 1 && Math.random() < 2 * deltaFactor) particlesToSpawn = 1;
+            } else if (currentSpeedMode === 'slow') {
+                frameCounter += deltaFactor;
+                if (frameCounter >= 12) { 
+                    particlesToSpawn = 1; 
+                    frameCounter %= 12; 
+                }
+            } else if (currentSpeedMode === 'single' && particles.length === 0) {
+                particlesToSpawn = 1;
+            }
+
+            for(let i = 0; i < particlesToSpawn; i++) {
+                let attemptY, intensity, rand;
+                do {
+                    attemptY = Math.random() * simCanvas.height;
+                    intensity = getIntensityAtY(attemptY);
+                    rand = Math.random();
+                } while (rand > intensity);
+
+                let chosenSlitY = slit1Y;
+                if (exp !== 'single') chosenSlitY = Math.random() < 0.5 ? slit1Y : slit2Y;
+
+                particles.push({
+                    x: 0, targetY: attemptY, speed: 4 + Math.random() * 2, slitY: chosenSlitY
+                });
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.speed * deltaFactor;
+                
+                let currentY;
+                if (p.x < slitX) {
+                    let progress = p.x / slitX;
+                    currentY = (simCanvas.height / 2) + (p.slitY - (simCanvas.height / 2)) * progress;
+                } else {
+                    let progress = (p.x - slitX) / (simCanvas.width - slitX);
+                    currentY = p.slitY + (p.targetY - p.slitY) * Math.min(progress, 1);
+                }
+                
+                simCtx.fillStyle = particleType.value === 'photon' ? '#fff' : '#ffebd6';
+                simCtx.beginPath(); simCtx.arc(p.x, currentY, 1.2, 0, Math.PI * 2); simCtx.fill();
+
+                if (exp === 'detector' && p.x >= slitX && p.x < slitX + 40) {
+                    simCtx.fillStyle = '#ff4d4d';
+                    simCtx.beginPath(); simCtx.arc(slitX + 10, p.slitY, 4, 0, Math.PI*2); simCtx.fill();
+                    simCtx.fillStyle = 'rgba(255, 77, 77, 1)'; 
+                    simCtx.font = 'bold 11px Arial';
+                    simCtx.fillText(obsText, slitX + 18, p.slitY + 4);
+                }
+
+                if (p.x >= simCanvas.width) {
+                    let hitIndex = Math.floor(p.targetY);
+                    if(hitIndex >= 0 && hitIndex < screenCanvas.width) {
+                        particleHits[hitIndex]++;
+                        if (particleHits[hitIndex] > maxHits) maxHits = particleHits[hitIndex];
+                        
+                        totalHits++;
+                        const locale = (typeof currentLang !== 'undefined' && currentLang === 'tr') ? 'tr-TR' : 'en-US';
+                        hitCountSpan.innerText = totalHits.toLocaleString(locale);
+
+                        if (milestones.includes(totalHits)) {
+                            hitCountSpan.classList.add('milestone');
+                            setTimeout(() => { hitCountSpan.classList.remove('milestone'); }, 600);
+                        }
+                    }
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function drawScreen() {
+            screenCtx.fillStyle = '#141923';
+            screenCtx.fillRect(0, 0, screenCanvas.width, screenCanvas.height);
+            
+            const mode = modeSelect.value;
+            const graphColor = particleType.value === 'photon' ? '#4da6ff' : '#ff9933';
+            const fillColor = particleType.value === 'photon' ? 'rgba(77, 166, 255, 0.25)' : 'rgba(255, 153, 51, 0.25)';
+            
+            screenCtx.strokeStyle = graphColor;
+            screenCtx.lineWidth = 1.5;
+            screenCtx.beginPath();
+
+            if (mode === 'wave') {
+                for (let y = 0; y < screenCanvas.width; y++) {
+                    const intensity = getIntensityAtY(y);
+                    const graphY = screenCanvas.height - (intensity * screenCanvas.height * 0.85);
+                    if (y === 0) screenCtx.moveTo(y, graphY); else screenCtx.lineTo(y, graphY);
+                }
+            } else {
+                for (let y = 0; y < screenCanvas.width; y++) {
+                    const hitCount = particleHits[y];
+                    const normalized = hitCount / maxHits;
+                    const graphY = screenCanvas.height - (normalized * screenCanvas.height * 0.85);
+                    
+                    if (y === 0) screenCtx.moveTo(y, graphY); else screenCtx.lineTo(y, graphY);
+                    if (hitCount > 0) {
+                        screenCtx.fillStyle = fillColor;
+                        screenCtx.fillRect(y, graphY, 1, screenCanvas.height - graphY);
+                    }
+                }
+            }
+            screenCtx.stroke();
+            
+            screenCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+            screenCtx.beginPath(); screenCtx.moveTo(screenCanvas.width / 2, 0); screenCtx.lineTo(screenCanvas.width / 2, screenCanvas.height); screenCtx.stroke();
+        }
+
+        // Delta Time Mantığı ile Performans / Yenileme Hızı Sabitleme
+        let lastTime = performance.now();
+
+        function animate(currentTime) {
+            const dt = Math.min((currentTime - lastTime) / 1000, 0.1); 
+            lastTime = currentTime;
+            const deltaFactor = dt * 60; // 60 FPS referanslı kat sayısı
+
+            if (modeSelect.value === 'wave') {
+                drawWaveMode();
+            } else {
+                drawQuantumMode(deltaFactor);
+            }
+            
+            drawScreen();
+            time += deltaFactor;
+            requestAnimationFrame(animate);
+        }
+
+        updateValues(); updateUI(); requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

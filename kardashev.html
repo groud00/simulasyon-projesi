@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="ks_page_title">Kardaşev Ölçeği Simülatörü - V2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #020203; /* Çok derin uzay siyahı */
+            --surface-color: #0b0c10;
+            --surface-light: #1f2833;
+            --text-main: #c5c6c7;
+            --text-muted: #66fcf1;
+            
+            /* Dinamik renkler */
+            --theme-color: #03dac6; 
+            --theme-glow: rgba(3, 218, 198, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 16px 20px 30px 20px;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(20,20,30,0.5) 0%, transparent 70%),
+                linear-gradient(0deg, var(--bg-color) 0%, #050508 100%);
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-top: 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 15px;
+        }
+
+        /* Mobil Uyumlu Sol Üst Geri Butonu */
+        .back-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            margin-right: 14px;
+            transition: background 0.2s, transform 0.1s, border-color 0.2s;
+            flex-shrink: 0;
+            user-select: none;
+        }
+
+        .back-btn:active {
+            transform: scale(0.92);
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 0 0 15px var(--theme-glow);
+            transition: text-shadow 0.5s ease;
+        }
+
+        /* Canvas Container & HUD Effects */
+        .visual-container {
+            position: relative;
+            width: 100%;
+            height: 340px; 
+            background-color: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 24px;
+            box-shadow: 0 0 40px var(--theme-glow), inset 0 0 20px rgba(0,0,0,0.8);
+            transition: box-shadow 0.5s ease, border-color 0.5s ease;
+        }
+
+        /* HUD Corners */
+        .visual-container::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 2px solid var(--theme-color);
+            border-radius: 12px;
+            clip-path: polygon(
+                0 20px, 20px 0, 40px 0, 40px 2px, 22px 2px, 2px 22px, 2px 40px, 0 40px,
+                0 calc(100% - 40px), 2px calc(100% - 40px), 2px calc(100% - 22px), 22px calc(100% - 2px), 40px calc(100% - 2px), 40px 100%, 20px 100%, 0 calc(100% - 20px),
+                100% calc(100% - 20px), calc(100% - 20px) 100%, calc(100% - 40px) 100%, calc(100% - 40px) calc(100% - 2px), calc(100% - 22px) calc(100% - 2px), calc(100% - 2px) calc(100% - 22px), calc(100% - 2px) calc(100% - 40px), 100% calc(100% - 40px),
+                100% 40px, calc(100% - 2px) 40px, calc(100% - 2px) 22px, calc(100% - 22px) 2px, calc(100% - 40px) 2px, calc(100% - 40px) 0, calc(100% - 20px) 0, 100% 20px
+            );
+            pointer-events: none;
+            opacity: 0.7;
+            transition: border-color 0.5s ease;
+            z-index: 10;
+        }
+
+        /* CRT Scanlines */
+        .visual-container::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            position: relative;
+            z-index: 1;
+        }
+
+        .type-badge {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            padding: 6px 14px;
+            border-left: 3px solid var(--theme-color);
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #fff;
+            transition: border-color 0.5s ease;
+            z-index: 15;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        
+        .k-value-display {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            font-size: 38px;
+            font-family: 'Share Tech Mono', monospace;
+            color: #fff;
+            text-shadow: 0 0 15px var(--theme-color);
+            z-index: 15;
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+        }
+
+        .k-value-display span.prefix {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 18px;
+            color: var(--theme-color);
+            opacity: 0.8;
+        }
+
+        /* Bilgi Kartları */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background-color: rgba(11, 12, 16, 0.8);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-left: 2px solid var(--theme-color);
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .metric-info {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            width: 100%;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .metric-val {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 20px;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .metric-source {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--theme-color);
+            transition: color 0.5s ease;
+            text-shadow: 0 0 8px rgba(0,0,0,0.5);
+        }
+
+        /* Slider */
+        .control-block {
+            background-color: rgba(11, 12, 16, 0.8);
+            padding: 24px 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        /* Özel Sci-Fi Slider */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            position: relative;
+            z-index: 2;
+        }
+
+        input[type="range"]:focus { outline: none; }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #1f2833;
+            border-radius: 2px;
+            border: 1px solid #000;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            height: 24px;
+            width: 8px;
+            background: #fff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -10px;
+            box-shadow: 0 0 15px var(--theme-color), 0 0 5px #fff;
+            border-radius: 2px;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:active {
+            transform: scale(1.2);
+        }
+
+        /* Slider Milestones */
+        .milestones {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            padding: 0 2px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            color: #45a29e;
+            position: relative;
+            z-index: 1;
+        }
+
+        .milestones span {
+            position: relative;
+        }
+        .milestones span::before {
+            content: '|';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #1f2833;
+            font-size: 10px;
+        }
+
+        /* Sci-Fi Fact Box */
+        .fact-box {
+            background: linear-gradient(90deg, rgba(31, 40, 51, 0.4) 0%, transparent 100%);
+            border-left: 3px solid var(--theme-color);
+            padding: 16px 20px;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #c5c6c7;
+            transition: border-color 0.5s ease;
+            position: relative;
+        }
+        
+        .fact-box::before {
+            content: 'SYS_MSG_';
+            position: absolute;
+            top: 4px;
+            right: 8px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            color: rgba(255,255,255,0.2);
+        }
+
+        .fact-title {
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Ana Ekran Onay Modalı (Görsele Uygun Tasarım) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(4, 7, 14, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #111726;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 28px 24px;
+            width: 100%;
+            max-width: 340px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            transform: scale(0.9);
+            transition: transform 0.25s ease;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-desc {
+            color: #8f9bb3;
+            font-size: 14px;
+            margin: 0 0 24px 0;
+            line-height: 1.4;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            font-family: 'Rajdhani', sans-serif;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        .modal-btn:active {
+            transform: scale(0.96);
+        }
+
+        .btn-cancel {
+            background: #202738;
+            color: #d1d5db;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-confirm {
+            background: #33bbf5;
+            color: #0d131d;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="back-btn" id="openModalBtn">&#8592;</div>
+        <h1 id="mainTitle" data-i18n="ks_title">Kardaşev Ölçeği</h1>
+    </div>
+
+    <!-- Görsel Efekt Alanı -->
+    <div class="visual-container" id="canvasContainer">
+        <div class="type-badge" id="typeBadge" data-i18n="ks_type0">TİP 0</div>
+        <canvas id="energyCanvas"></canvas>
+        <div class="k-value-display">
+            <span class="prefix">K=</span>
+            <span id="kValueText">0.00</span>
+        </div>
+    </div>
+
+    <!-- İstatistikler -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-info">
+                <span class="metric-label" data-i18n="ks_energy_output">Enerji Çıktısı [Güç]</span>
+                <div class="metric-val">
+                    <span id="powerDisplay">0.0 × 10⁰ W</span>
+                    <span class="metric-source" id="sourceDisplay" data-i18n="ks_analyzing">Analiz Ediliyor...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enerji Kontrolcüsü -->
+    <div class="control-block">
+        <div class="control-header">
+            <span data-i18n="ks_energy_control">Sistem Enerjisini Modüle Et [Logaritmik]</span>
+        </div>
+        <input type="range" id="powerSlider" min="10" max="39" step="0.05" value="13.3">
+        <div class="milestones">
+            <span>K0</span>
+            <span>K1</span>
+            <span>K2</span>
+            <span>K3</span>
+        </div>
+    </div>
+
+    <!-- Bilgi Kutusu -->
+    <div class="fact-box" id="factBox">
+        <span class="fact-title" data-i18n="ks_starting">Başlatılıyor...</span>
+        <span data-i18n="ks_waiting">Veri bekleniyor.</span>
+    </div>
+
+    <!-- Ana Ekran Onay Pop-up'ı -->
+    <div class="modal-overlay" id="exitModal">
+        <div class="modal-card">
+            <h3 class="modal-title" data-i18n="modal_exit_title">Ana Ekrana Dön</h3>
+            <p class="modal-desc" data-i18n="modal_exit_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-actions">
+                <button class="modal-btn btn-cancel" id="closeModalBtn" data-i18n="modal_cancel">İptal</button>
+                <button class="modal-btn btn-confirm" id="confirmExitBtn" data-i18n="modal_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="lang.js"></script>
+    <script>
+        // --- DEĞİŞKENLER VE LERP ---
+        let currentK = 0.73;
+        let targetK = 0.73;
+        let currentExp = 13.3;
+        let targetExp = 13.3;
+
+        // Lineer İnterpolasyon (Yumuşak Sayı Geçişleri)
+        function lerp(start, end, factor) {
+            return start + (end - start) * factor;
+        }
+
+        function toSuperscript(num) {
+            const chars = {
+                '0':'⁰', '1':'¹', '2':'²', '3':'³', '4':'⁴', 
+                '5':'⁵', '6':'⁶', '7':'⁷', '8':'⁸', '9':'⁹', '-':'⁻'
+            };
+            return num.toString().split('').map(c => chars[c] || c).join('');
+        }
+
+        function updateLogic() {
+            targetExp = parseFloat(document.getElementById('powerSlider').value);
+            targetK = (targetExp - 6) / 10;
+        }
+
+        document.getElementById('powerSlider').addEventListener('input', updateLogic);
+
+        // --- UI GÜNCELLEME DÖNGÜSÜ (Delta Time Destekli) ---
+        function updateUIDisplay(deltaFactor = 1) {
+            // Yüksek FPS / Ekran hızlarında eşit yumuşatma sağlamak için deltaFactor kullanımı
+            const lerpFactor = 1 - Math.pow(1 - 0.1, deltaFactor);
+            currentK = lerp(currentK, targetK, lerpFactor);
+            currentExp = lerp(currentExp, targetExp, lerpFactor);
+
+            document.getElementById('kValueText').innerText = currentK.toFixed(2);
+            
+            // Güç formatlama
+            let base = Math.pow(10, currentExp % 1).toFixed(1);
+            if(base === "10.0") { base = "1.0"; }
+            const exponent = Math.floor(currentExp);
+            document.getElementById('powerDisplay').innerText = `${base} × 10${toSuperscript(exponent)} W`;
+
+            // Tema ve Tip belirleme
+            const root = document.documentElement;
+            const factBox = document.getElementById('factBox');
+            const typeBadge = document.getElementById('typeBadge');
+            const sourceDisplay = document.getElementById('sourceDisplay');
+
+            if (targetK < 1.0) {
+                root.style.setProperty('--theme-color', '#03dac6');
+                root.style.setProperty('--theme-glow', 'rgba(3, 218, 198, 0.4)');
+                typeBadge.innerText = t('ks_type0');
+                
+                if(targetK > 0.72 && targetK < 0.74) {
+                    sourceDisplay.innerText = t('ks_source_humanity');
+                    factBox.innerHTML = `<span class="fact-title">${t('ks_fact_current_title')}</span>${t('ks_fact_current')}`;
+                } else {
+                    sourceDisplay.innerText = t('ks_source_planetary');
+                    factBox.innerHTML = `<span class="fact-title">${t('ks_fact_type0_title')}</span>${t('ks_fact_type0')}`;
+                }
+                targetVisualState = 0; 
+            } else if (targetK >= 1.0 && targetK < 2.0) {
+                root.style.setProperty('--theme-color', '#ffb300');
+                root.style.setProperty('--theme-glow', 'rgba(255, 179, 0, 0.4)');
+                
+                if(targetK < 1.5) {
+                    typeBadge.innerText = t('ks_type1');
+                    sourceDisplay.innerText = t('ks_source_planet_energy');
+                    factBox.innerHTML = `<span class="fact-title">${t('ks_fact_type1_title')}</span>${t('ks_fact_type1')}`;
+                } else {
+                    typeBadge.innerText = t('ks_type15');
+                    sourceDisplay.innerText = t('ks_source_megastructure');
+                    factBox.innerHTML = `<span class="fact-title">${t('ks_fact_dyson_title')}</span>${t('ks_fact_dyson')}`;
+                }
+                targetVisualState = 1;
+            } else if (targetK >= 2.0 && targetK < 3.0) {
+                root.style.setProperty('--theme-color', '#ff3d00');
+                root.style.setProperty('--theme-glow', 'rgba(255, 61, 0, 0.4)');
+                typeBadge.innerText = t('ks_type2');
+                sourceDisplay.innerText = t('ks_source_stellar');
+                factBox.innerHTML = `<span class="fact-title">${t('ks_fact_type2_title')}</span>${t('ks_fact_type2')}`;
+                targetVisualState = 2;
+            } else {
+                root.style.setProperty('--theme-color', '#bb86fc');
+                root.style.setProperty('--theme-glow', 'rgba(187, 134, 252, 0.4)');
+                typeBadge.innerText = t('ks_type3');
+                sourceDisplay.innerText = t('ks_source_galactic');
+                factBox.innerHTML = `<span class="fact-title">${t('ks_fact_type3_title')}</span>${t('ks_fact_type3')}`;
+                targetVisualState = 3;
+            }
+        }
+
+        // --- CANVAS GÖRSELLEŞTİRME VE DELTA TIME ZAMANLAYICISI ---
+        const canvas = document.getElementById('energyCanvas');
+        const ctx = canvas.getContext('2d');
+        let targetVisualState = 0; 
+        let currentVisualState = 0; 
+        let time = 0;
+        let lastTime = performance.now();
+
+        // Arka Plan Yıldızları (Starfield)
+        const stars = [];
+        for(let i = 0; i < 150; i++) {
+            stars.push({
+                x: Math.random() * 2 - 1,
+                y: Math.random() * 2 - 1,
+                z: Math.random() * 2,
+                baseAlpha: Math.random(),
+                size: Math.random() * 1.5 + 0.5
+            });
+        }
+
+        function resize() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function drawHexagon(ctx, x, y, r) {
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI / 3) * i;
+                const px = x + r * Math.cos(angle);
+                const py = y + r * Math.sin(angle);
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+
+        function drawCanvas(now) {
+            if (!now) now = performance.now();
+            // Delta time hesaplaması (Saniye cinsinden)
+            let dt = (now - lastTime) / 1000;
+            if (dt > 0.1) dt = 0.1; // Sekme değişimlerinde sıçramayı engelleme
+            lastTime = now;
+            
+            // 60 FPS referanslı delta çarpanı
+            const deltaFactor = dt * 60;
+
+            updateUIDisplay(deltaFactor);
+            
+            const stateLerp = 1 - Math.pow(1 - 0.04, deltaFactor);
+            currentVisualState += (targetVisualState - currentVisualState) * stateLerp;
+            
+            // Motion Blur ve Derin Siyah Arka Plan
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            
+            // Zaman artışını Delta Time ile sabitleme
+            time += (0.01 + (currentVisualState * 0.005)) * deltaFactor;
+
+            // 1. YILDIZ TARLASI ÇİZİMİ
+            ctx.save();
+            ctx.translate(cx, cy);
+            stars.forEach(star => {
+                // 3D Hissi için basit projeksiyon
+                let perspective = 1 / (star.z + 0.1);
+                let sx = star.x * cx * perspective * 2;
+                let sy = star.y * cy * perspective * 2;
+                
+                // Yıldızların kayma hızını ekran yenileme hızından bağımsız kılma
+                star.z -= 0.002 * (1 + currentVisualState) * deltaFactor;
+                if (star.z <= 0) {
+                    star.z = 2;
+                    star.x = Math.random() * 2 - 1;
+                    star.y = Math.random() * 2 - 1;
+                }
+
+                ctx.globalAlpha = star.baseAlpha * Math.min(1, perspective);
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(sx, sy, star.size * perspective, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            // 2. ANA OBJE FİZİĞİ
+            let coreRadius = 25 + (currentVisualState * 12);
+            let glowColor, coreColor;
+
+            if (currentVisualState < 1.5) {
+                // Mavi / Camgöbeği (Dünya)
+                glowColor = `rgba(3, 218, 198, ${0.4 - currentVisualState * 0.2})`;
+                coreColor = `rgba(15, 120, 200, ${1 - currentVisualState * 0.5})`;
+            } else if (currentVisualState < 2.5) {
+                // Turuncu (Yıldız/Dyson)
+                let intensity = (currentVisualState - 1.5);
+                glowColor = `rgba(255, 179, 0, ${0.2 + intensity * 0.3})`;
+                coreColor = `rgba(255, 80, 0, 1)`;
+            } else {
+                // Mor (Karadelik Merkezi / Galaksi)
+                glowColor = `rgba(187, 134, 252, ${0.5})`;
+                coreColor = `#fff`;
+                coreRadius = 10; 
+            }
+
+            // Hacimsel Parlama (Nebula Gradient)
+            if (currentVisualState > 2.0) {
+                let nebulaOp = Math.min(1, currentVisualState - 2.0);
+                const gradient = ctx.createRadialGradient(0, 0, 10, 0, 0, canvas.width/1.5);
+                gradient.addColorStop(0, `rgba(187, 134, 252, ${0.2 * nebulaOp})`);
+                gradient.addColorStop(0.5, `rgba(40, 20, 80, ${0.1 * nebulaOp})`);
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(-cx, -cy, canvas.width, canvas.height);
+            }
+
+            // Halo Efekti
+            ctx.beginPath();
+            ctx.arc(0, 0, coreRadius * 3, 0, Math.PI * 2);
+            ctx.fillStyle = glowColor;
+            ctx.fill();
+
+            // Çekirdek
+            ctx.beginPath();
+            ctx.arc(0, 0, coreRadius, 0, Math.PI * 2);
+            ctx.fillStyle = coreColor;
+            ctx.fill();
+            
+            // Atmosfer / Enerji Kalkanı Detayı (Tip 0 ve 1)
+            if(currentVisualState < 1.8) {
+                ctx.strokeStyle = `rgba(255,255,255, ${0.2 - currentVisualState * 0.1})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(0, 0, coreRadius + 4, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // 3. DYSON AĞI (HEKZAGONAL) - DURUM 0.8 - 2.8
+            if (currentVisualState > 0.8 && currentVisualState < 2.8) {
+                let dOpacity = Math.sin((currentVisualState - 0.8) * Math.PI / 2); 
+                if (dOpacity > 0) {
+                    ctx.strokeStyle = `rgba(255, 179, 0, ${dOpacity * 0.8})`;
+                    ctx.lineWidth = 1;
+                    
+                    const ringCount = 3;
+                    for (let r = 1; r <= ringCount; r++) {
+                        ctx.save();
+                        ctx.rotate(time * (r % 2 === 0 ? 1 : -1) * r);
+                        const radius = coreRadius + (20 * r);
+                        
+                        // Halka yörüngesine hekzagonlar çiz
+                        const nodeCount = 8 * r;
+                        for(let i=0; i<nodeCount; i++) {
+                            const angle = (Math.PI * 2 / nodeCount) * i;
+                            const hx = Math.cos(angle) * radius;
+                            const hy = Math.sin(angle) * radius;
+                            drawHexagon(ctx, hx, hy, 4 + r);
+                        }
+                        
+                        ctx.beginPath();
+                        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                        ctx.setLineDash([2, 8]);
+                        ctx.stroke();
+                        
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // 4. GALAKTİK SARMAL KOLLAR - DURUM 2.0+
+            if (currentVisualState > 2.0) {
+                let gOpacity = Math.min(1, currentVisualState - 2.0);
+                ctx.fillStyle = `rgba(187, 134, 252, ${gOpacity})`;
+                
+                const arms = 2; 
+                const particlesPerArm = 200;
+                
+                for (let arm = 0; arm < arms; arm++) {
+                    const angleOffset = (Math.PI * 2 / arms) * arm;
+                    for (let i = 0; i < particlesPerArm; i++) {
+                        // N-body/Sarmal hissi veren logaritmik spiral denklemi
+                        let a = i * 0.08; 
+                        let r = 5 * Math.pow(1.08, a);
+                        let finalAngle = a + angleOffset - (time * 2);
+                        
+                        // Yörüngede hafif sapmalar (gürültü)
+                        let x = Math.cos(finalAngle) * r + (Math.random() * 2 - 1) * (i * 0.05);
+                        let y = Math.sin(finalAngle) * r + (Math.random() * 2 - 1) * (i * 0.05);
+                        
+                        let pSize = Math.max(0.5, 2.5 - (i * 0.01));
+                        
+                        ctx.beginPath();
+                        ctx.arc(x, y, pSize, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            ctx.restore();
+            requestAnimationFrame(drawCanvas);
+        }
+
+        // --- GERİ BUTONU VE MODAL KONTROLLERİ ---
+        const exitModal = document.getElementById('exitModal');
+        const openModalBtn = document.getElementById('openModalBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const confirmExitBtn = document.getElementById('confirmExitBtn');
+
+        openModalBtn.addEventListener('click', () => {
+            exitModal.classList.add('active');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            exitModal.classList.remove('active');
+        });
+
+        confirmExitBtn.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        // Arka plana tıklanınca kapatma
+        exitModal.addEventListener('click', (e) => {
+            if (e.target === exitModal) {
+                exitModal.classList.remove('active');
+            }
+        });
+
+        // Başlat
+        updateLogic();
+        requestAnimationFrame(drawCanvas);
+
+    </script>
+</body>
+</html>

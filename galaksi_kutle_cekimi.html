@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="gal_page_title">Galaksi Kütleçekim Simülatörü</title>
+    <!-- Dil Dosyası Entegrasyonu -->
+    <script src="lang.js"></script>
+    <style>
+        :root {
+            --bg-color: #05070e;
+            --card-bg: #121623;
+            --accent-cyan: #00f2fe;
+            --accent-red: #ff3b3b;
+            --accent-yellow: #feca00;
+            --accent-purple: #9d00ff;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg-color); font-family: 'Segoe UI', system-ui, sans-serif;
+            color: var(--text-main); overflow: hidden;
+        }
+
+        #canvas-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 0;
+            touch-action: none; cursor: grab;
+        }
+        canvas:active { cursor: grabbing; }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* Geri Butonu */
+        #back-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(18, 22, 35, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 200;
+            color: #ffffff;
+            transition: background 0.2s, transform 0.1s;
+        }
+        #back-btn:active {
+            transform: scale(0.92);
+            background: rgba(18, 22, 35, 0.95);
+        }
+        #back-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Modal Overlay & Kutusu */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-card {
+            background: #121623;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 24px 20px;
+            width: 85%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            transform: scale(0.9);
+            transition: transform 0.25s ease;
+        }
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 8px 0;
+        }
+        .modal-desc {
+            font-size: 13px;
+            color: #94a3b8;
+            margin: 0 0 20px 0;
+            line-height: 1.4;
+        }
+        .modal-btn-group {
+            display: flex;
+            gap: 12px;
+        }
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .modal-btn-cancel {
+            background: #1e2538;
+            color: #e2e8f0;
+        }
+        .modal-btn-confirm {
+            background: #00f2fe;
+            color: #05070e;
+        }
+        .modal-btn:active {
+            transform: scale(0.95);
+        }
+
+        #scroll-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100vh;
+            overflow-y: auto; overflow-x: hidden; z-index: 10;
+            pointer-events: none; scroll-behavior: smooth;
+        }
+
+        .spacer { height: 60vh; pointer-events: none; }
+
+        .content-wrapper {
+            background: linear-gradient(180deg, transparent 0%, var(--bg-color) 5%, var(--bg-color) 100%);
+            padding: 20px; pointer-events: auto; min-height: 50vh; display: flex; flex-direction: column; gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg); border-radius: 16px; padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-left: 4px solid var(--accent-cyan);
+            display: flex; flex-direction: column; gap: 15px;
+        }
+        .card.red { border-left-color: var(--accent-red); }
+        .card.yellow { border-left-color: var(--accent-yellow); }
+        .card.purple { border-left-color: var(--accent-purple); }
+
+        .card-title {
+            font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--accent-cyan); margin: 0;
+        }
+        .card.red .card-title { color: var(--accent-red); }
+        .card.yellow .card-title { color: var(--accent-yellow); }
+        .card.purple .card-title { color: var(--accent-purple); }
+
+        .card-text { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin: 0; }
+        .card-text strong { color: var(--text-main); }
+
+        .control-group { display: flex; flex-direction: column; gap: 8px; }
+        .label-val { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; }
+        
+        input[type="range"] {
+            width: 100%; height: 6px; background: #2a3143; border-radius: 4px;
+            outline: none; -webkit-appearance: none; cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+            background: var(--accent-cyan); cursor: pointer; box-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 5px; }
+        button {
+            flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: bold;
+            font-size: 13px; cursor: pointer; transition: 0.2s; color: #000;
+        }
+        .btn-primary { background: var(--accent-cyan); box-shadow: 0 0 15px rgba(0, 242, 254, 0.3); }
+        .btn-danger { background: var(--accent-red); box-shadow: 0 0 15px rgba(255, 59, 59, 0.3); color: white; }
+        button:active { transform: scale(0.95); }
+
+        #toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); padding: 8px 16px; border-radius: 20px;
+            font-size: 12px; color: #fff; z-index: 100; pointer-events: none; border: 1px solid #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="back-btn">
+        <svg viewBox="0 0 24 24">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+    </div>
+
+    <div class="modal-overlay" id="exitModal">
+        <div class="modal-card">
+            <h3 class="modal-title" data-i18n="modal_exit_title">Ana Ekrana Dön</h3>
+            <p class="modal-desc" data-i18n="modal_exit_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-btn-group">
+                <button class="modal-btn modal-btn-cancel" id="modalCancel" data-i18n="btn_cancel">İptal</button>
+                <button class="modal-btn modal-btn-confirm" id="modalConfirm" data-i18n="btn_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay active" id="performanceModal">
+        <div class="modal-card">
+            <h3 class="modal-title" data-i18n="gal_performance_title">Yüksek İşlem Performansı Gerektirir</h3>
+            <p class="modal-desc" data-i18n="gal_performance_desc">Bu simülasyon yüksek işlem performansı gerektirir. Özellikle düşük sistemli cihazlarda donma ve kasma yapabilir. Bunu önlemek için yıldız sayısını düşürün.</p>
+            <div class="modal-btn-group">
+                <button class="modal-btn modal-btn-cancel" id="performanceCancel" data-i18n="gal_performance_cancel">Kapat</button>
+                <button class="modal-btn modal-btn-confirm" id="performanceConfirm" data-i18n="gal_performance_confirm">Devam Et</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="galaxyCanvas"></canvas>
+    </div>
+    
+    <div id="toast" data-i18n="gal_toast_hint">PC: Çift Tıkla / Mobil: Uzun Bas — Kara Delik Ekle!</div>
+
+    <div id="scroll-container">
+        <div class="spacer"></div>
+        
+        <div class="content-wrapper">
+            
+            <div class="card">
+                <div class="control-group">
+                    <div class="label-val">
+                        <span data-i18n="gal_ctrl_star_count">Yıldız Sayısı (Performans)</span>
+                        <span id="starCountVal" style="color: var(--accent-cyan);">3000</span>
+                    </div>
+                    <input type="range" id="starSlider" min="500" max="6000" step="500" value="3000">
+                </div>
+                <div class="control-group" style="margin-top: 10px;">
+                    <div class="label-val">
+                        <span data-i18n="gal_ctrl_dark_matter">Karanlık Madde Halosu Etkisi</span>
+                        <span id="dmVal" style="color: var(--accent-cyan);">50</span>
+                    </div>
+                    <input type="range" id="dmSlider" min="0" max="100" step="5" value="50">
+                </div>
+                <div class="btn-group">
+                    <button class="btn-primary" id="resetBtn" data-i18n="gal_btn_recreate">Yeniden Oluştur</button>
+                    <button class="btn-danger" id="clearBhBtn" data-i18n="gal_btn_clear_bh">Kara Delikleri Temizle</button>
+                </div>
+            </div>
+
+            <div class="card red">
+                <h2 class="card-title" data-i18n="gal_card_spaghetti_title">Yıldız Yutulması (Spagettileşme)</h2>
+                <p class="card-text" data-i18n="gal_card_spaghetti_desc">
+                    Bir yıldız kara deliğe çok yaklaştığında, devasa yerçekimi gücü yıldızı bir makarna gibi uzatıp parçalar. Buna bilimde <strong>"Spagettileşme"</strong> denir. Yıldızın gazları kara deliğe düşerken birbirine sürtünerek inanılmaz derecede ısınır. Ekranda gördüğünüz ani beyaz ve mavi parlamalar, yutulan yıldızın son anlarında yaydığı devasa enerji çığlığıdır.
+                </p>
+            </div>
+
+            <div class="card yellow">
+                <h2 class="card-title" data-i18n="gal_card_dm_title">Karanlık Madde (Görünmez Yapıştırıcı)</h2>
+                <p class="card-text" data-i18n="gal_card_dm_desc">
+                    Galaksilerin en dışındaki yıldızlar o kadar hızlı dönerler ki, normalde merkezden kopup uzaya savrulmaları gerekirdi. Bilim insanları, galaksiyi bir arada tutan ve ışık yaymayan görünmez bir kalkan olduğunu fark etti; buna <strong>Karanlık Madde</strong> diyoruz. Yukarıdaki çubuğu kaydırarak bu görünmez yapıştırıcının galaksiyi nasıl dengede tuttuğunu (veya yokluğunda nasıl dağıldığını) test edebilirsiniz.
+                </p>
+            </div>
+
+            <div class="card purple">
+                <h2 class="card-title" data-i18n="gal_card_event_horizon_title">Olay Ufku ve Işık Halkası</h2>
+                <p class="card-text" data-i18n="gal_card_event_horizon_desc">
+                    Kara deliğin tam ortasındaki simsiyah bölge, evrendeki en hızlı şey olan ışığın bile kaçamadığı dönüşü olmayan sınır olan <strong>Olay Ufku</strong>'dur. Etrafındaki parlak ateş çemberi ise, kara deliğin muazzam çekim gücü yüzünden bükülüp onun etrafında dönmeye başlayan gaz ve ışınlardan oluşur. Kara deliğe düşen her şey, yutulmadan hemen önce bu çemberde son bir kez parlar.
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+<script>
+    // --- i18n Entegrasyon Fonksiyonu ---
+    function applyLanguage() {
+        const selectedLanguage = typeof currentLang !== 'undefined'
+            ? currentLang
+            : (localStorage.getItem('cosmos_lang') || 'tr');
+        const langObj = typeof translations !== 'undefined'
+            ? translations[selectedLanguage]
+            : null;
+
+        if (!langObj) return;
+
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (langObj[key]) {
+                el.innerHTML = langObj[key];
+            }
+        });
+
+        if (langObj['gal_page_title']) {
+            document.title = langObj['gal_page_title'];
+        }
+    }
+
+    const canvas = document.getElementById('galaxyCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    let camera = { x: 0, y: 0, zoom: 0.8 };
+    let isDragging = false, dragStart = { x: 0, y: 0 }, camStart = { x: 0, y: 0 };
+    let initialPinchDistance = null;
+    let initialZoom = 1;
+    let longPressTimer;
+
+    const G = 0.3;
+    const softeningSq = 400; 
+    const THETA = 0.8; 
+    const SMBH_MASS = 8000; 
+    
+    let N = 3000;
+    let darkMatterMultiplier = 50;
+    let blackHoles = []; 
+    let pos, vel, accX, accY, mass, colorType;
+    let width, height, centerX, centerY, maxRadius;
+    const colors = ['#fff4d0', '#00f2fe', '#b05fff']; 
+
+    const nodePool = [];
+    let poolPtr = 0;
+
+    // Delta Time ve Sabit Zaman Adımı Kontrolü
+    let lastTime = performance.now();
+    const TARGET_FPS = 60;
+    const TIME_STEP = 1 / TARGET_FPS;
+    let accumulator = 0;
+    const isMobileDevice = window.matchMedia('(max-width: 640px)').matches;
+    const renderInterval = isMobileDevice ? 1000 / 30 : 1000 / 60;
+    let lastRenderTime = 0;
+
+    // Modal & Navigasyon Mantığı
+    const backBtn = document.getElementById('back-btn');
+    const exitModal = document.getElementById('exitModal');
+    const modalCancel = document.getElementById('modalCancel');
+    const modalConfirm = document.getElementById('modalConfirm');
+    const performanceModal = document.getElementById('performanceModal');
+    const performanceCancel = document.getElementById('performanceCancel');
+    const performanceConfirm = document.getElementById('performanceConfirm');
+
+    backBtn.addEventListener('click', () => {
+        exitModal.classList.add('active');
+    });
+
+    modalCancel.addEventListener('click', () => {
+        exitModal.classList.remove('active');
+    });
+
+    modalConfirm.addEventListener('click', () => {
+        window.location.href = 'index.html';
+    });
+
+    function startSimulation() {
+        performanceModal.classList.remove('active');
+        resize();
+        createGalaxy();
+        lastTime = performance.now();
+        requestAnimationFrame(loop);
+        setTimeout(() => { document.getElementById('toast').style.display = 'none'; }, 5000);
+    }
+
+    performanceConfirm.addEventListener('click', startSimulation);
+
+    performanceCancel.addEventListener('click', () => {
+        window.location.href = 'index.html';
+    });
+
+    function getQuadNode() {
+        if (poolPtr >= nodePool.length) {
+            nodePool.push({ x:0, y:0, size:0, mass:0, cmX:0, cmY:0, isLeaf:true, starIndex:-1, children:[] });
+        }
+        let n = nodePool[poolPtr++];
+        n.mass = 0; n.cmX = 0; n.cmY = 0; n.isLeaf = true; n.starIndex = -1;
+        n.children.length = 0;
+        return n;
+    }
+
+    function initArrays() {
+        pos = new Float32Array(N * 2);
+        vel = new Float32Array(N * 2);
+        accX = new Float32Array(N);
+        accY = new Float32Array(N);
+        mass = new Float32Array(N);
+        colorType = new Uint8Array(N);
+        blackHoles = [];
+    }
+
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+        centerX = width / 2;
+        centerY = height / 2;
+        maxRadius = Math.min(width, height) * 1.3;
+    }
+
+    function getAccelerationAt(r) {
+        let aSMBH = (G * SMBH_MASS) / (r * r + softeningSq);
+        let mEnclosedDisk = N * 0.8 * Math.min(1.0, Math.pow(r / maxRadius, 1.2));
+        let aDisk = (G * mEnclosedDisk) / (r * r + softeningSq);
+        let aDM = (darkMatterMultiplier * 0.08) / (r + 80);
+        return aSMBH + aDisk + aDM;
+    }
+
+    function respawnStar(i) {
+        let r = (0.25 + Math.random() * 0.75) * maxRadius;
+        let angle = Math.random() * Math.PI * 2;
+        pos[i*2] = centerX + Math.cos(angle) * r;
+        pos[i*2+1] = centerY + Math.sin(angle) * r;
+        
+        let aTotal = getAccelerationAt(r);
+        let vOrb = Math.sqrt(r * aTotal);
+        
+        vel[i*2] = -Math.sin(angle) * vOrb;
+        vel[i*2+1] = Math.cos(angle) * vOrb;
+    }
+
+    function createGalaxy() {
+        initArrays();
+
+        for (let i = 0; i < N; i++) {
+            let r = Math.pow(Math.random(), 1.15) * maxRadius + 20;
+            let armOffset = (i % 2 === 0) ? 0 : Math.PI; 
+            let angle = armOffset + (r / (maxRadius*0.5)) * 3.5 + (Math.random() - 0.5) * 0.6;
+            
+            pos[i*2] = centerX + Math.cos(angle) * r;
+            pos[i*2+1] = centerY + Math.sin(angle) * r;
+            mass[i] = Math.random() * 1.5 + 0.5;
+
+            let aTotal = getAccelerationAt(r);
+            let speed = Math.sqrt(r * aTotal) * (0.98 + Math.random() * 0.04);
+            
+            vel[i*2] = -Math.sin(angle) * speed;
+            vel[i*2+1] = Math.cos(angle) * speed;
+
+            if (r < maxRadius * 0.18) colorType[i] = 0;
+            else if (r < maxRadius * 0.45) colorType[i] = 1;
+            else colorType[i] = 2;
+        }
+    }
+
+    function insertNode(node, sIndex) {
+        let sx = pos[sIndex*2], sy = pos[sIndex*2+1], sm = mass[sIndex];
+        let totalMass = node.mass + sm;
+        node.cmX = (node.cmX * node.mass + sx * sm) / totalMass;
+        node.cmY = (node.cmY * node.mass + sy * sm) / totalMass;
+        node.mass = totalMass;
+
+        if (node.isLeaf) {
+            if (node.starIndex === -1) {
+                node.starIndex = sIndex; 
+            } else {
+                if (node.size < 1.0) return; 
+                let oldStar = node.starIndex;
+                node.isLeaf = false; node.starIndex = -1;
+                let half = node.size / 2;
+                
+                for(let i=0; i<4; i++) {
+                    let child = getQuadNode();
+                    child.size = half;
+                    child.x = node.x + (i%2)*half;
+                    child.y = node.y + Math.floor(i/2)*half;
+                    node.children.push(child);
+                }
+                insertIntoChild(node, oldStar);
+                insertIntoChild(node, sIndex);
+            }
+        } else {
+            insertIntoChild(node, sIndex);
+        }
+    }
+
+    function insertIntoChild(node, sIndex) {
+        let q = (pos[sIndex*2] > node.x + node.size/2 ? 1 : 0) + (pos[sIndex*2+1] > node.y + node.size/2 ? 2 : 0);
+        insertNode(node.children[q], sIndex);
+    }
+
+    let fxAcc = 0, fyAcc = 0;
+    function calculateForce(node, sIndex) {
+        if (node.mass === 0) return;
+        let dx = node.cmX - pos[sIndex*2];
+        let dy = node.cmY - pos[sIndex*2+1];
+        let distSq = dx*dx + dy*dy + softeningSq;
+
+        if (node.isLeaf) {
+            if (node.starIndex !== sIndex) {
+                let dist = Math.sqrt(distSq);
+                let force = (G * node.mass) / distSq;
+                fxAcc += force * (dx / dist);
+                fyAcc += force * (dy / dist);
+            }
+        } else {
+            let dist = Math.sqrt(distSq);
+            if (node.size / dist < THETA) {
+                let force = (G * node.mass) / distSq;
+                fxAcc += force * (dx / dist);
+                fyAcc += force * (dy / dist);
+            } else {
+                for(let i=0; i<4; i++) calculateForce(node.children[i], sIndex);
+            }
+        }
+    }
+
+    function updatePhysics(dt) {
+        let timeScale = dt * TARGET_FPS;
+
+        for (let i = 0; i < N; i++) {
+            pos[i*2] += vel[i*2] * 0.5 * timeScale;
+            pos[i*2+1] += vel[i*2+1] * 0.5 * timeScale;
+        }
+
+        poolPtr = 0; 
+        let root = getQuadNode();
+        root.x = centerX - 5000; root.y = centerY - 5000; root.size = 10000;
+
+        for (let i = 0; i < N; i++) insertNode(root, i);
+
+        for (let i = 0; i < N; i++) {
+            fxAcc = 0; fyAcc = 0;
+            let px = pos[i*2], py = pos[i*2+1];
+            
+            calculateForce(root, i);
+
+            let dxC = centerX - px, dyC = centerY - py;
+            let distSqC = dxC*dxC + dyC*dyC + softeningSq;
+            let distC = Math.sqrt(distSqC);
+            let forceC = (G * SMBH_MASS) / distSqC;
+            fxAcc += forceC * (dxC / distC);
+            fyAcc += forceC * (dyC / distC);
+
+            let dmForce = (darkMatterMultiplier * 0.08) / (distC + 80);
+            fxAcc += dmForce * (dxC / distC);
+            fyAcc += dmForce * (dyC / distC);
+
+            for (let bh of blackHoles) {
+                let dxB = bh.x - px, dyB = bh.y - py;
+                let distSqB = dxB*dxB + dyB*dyB + 10;
+                let distB = Math.sqrt(distSqB);
+
+                let eventHorizon = 6 + bh.mass * 0.00005; 
+                if (distB < eventHorizon * 1.5) { 
+                    bh.mass += mass[i] * 50;
+                    bh.flash = Math.min(1.2, (bh.flash || 0) + 0.4); 
+                    respawnStar(i);
+                    break;
+                }
+
+                let forceB = (G * bh.mass) / distSqB;
+                fxAcc += forceB * (dxB / distB);
+                fyAcc += forceB * (dyB / distB);
+            }
+
+            accX[i] = fxAcc;
+            accY[i] = fyAcc;
+        }
+
+        for (let i = 0; i < N; i++) {
+            vel[i*2] += accX[i] * timeScale;
+            vel[i*2+1] += accY[i] * timeScale;
+            pos[i*2] += vel[i*2] * 0.5 * timeScale;
+            pos[i*2+1] += vel[i*2+1] * 0.5 * timeScale;
+        }
+
+        for (let bh of blackHoles) {
+            if (bh.flash > 0) bh.flash *= Math.pow(0.92, timeScale); 
+        }
+    }
+
+    function render() {
+        ctx.fillStyle = 'rgba(5, 7, 14, 0.4)'; 
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.save();
+        ctx.translate(width/2, height/2);
+        ctx.scale(camera.zoom, camera.zoom);
+        ctx.translate(-width/2 + camera.x, -height/2 + camera.y);
+
+        let coreGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 120);
+        coreGlow.addColorStop(0, 'rgba(255, 240, 200, 0.9)');
+        coreGlow.addColorStop(0.3, 'rgba(100, 150, 255, 0.2)');
+        coreGlow.addColorStop(1, 'transparent');
+        ctx.fillStyle = coreGlow;
+        ctx.beginPath(); ctx.arc(centerX, centerY, 120, 0, Math.PI * 2); ctx.fill();
+
+        for (let bh of blackHoles) {
+            let flashBoost = bh.flash || 0;
+            let massScale = bh.mass * 0.00005;
+            let eventHorizon = 8 + massScale; 
+            let diskOuter = 35 + massScale * 15;
+
+            ctx.save();
+            ctx.translate(bh.x, bh.y);
+
+            if (flashBoost > 0.01) {
+                ctx.globalCompositeOperation = 'lighter';
+                let flareRadius = diskOuter * (1.5 + flashBoost * 3);
+                let flare = ctx.createRadialGradient(0, 0, eventHorizon, 0, 0, flareRadius);
+                flare.addColorStop(0, `rgba(200, 240, 255, ${Math.min(0.8, flashBoost)})`);
+                flare.addColorStop(0.3, `rgba(100, 150, 255, ${Math.min(0.4, flashBoost * 0.6)})`);
+                flare.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = flare;
+                ctx.beginPath();
+                ctx.arc(0, 0, flareRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalCompositeOperation = 'source-over';
+            }
+
+            let haloGlow = ctx.createRadialGradient(0, 0, eventHorizon * 0.8, 0, 0, diskOuter);
+            haloGlow.addColorStop(0, 'rgba(255, 230, 180, 0.9)');
+            haloGlow.addColorStop(0.2, 'rgba(255, 180, 80, 0.7)');
+            haloGlow.addColorStop(0.6, 'rgba(200, 80, 10, 0.3)');
+            haloGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.fillStyle = haloGlow;
+            ctx.beginPath();
+            ctx.arc(0, 0, diskOuter, 0, Math.PI * 2);
+            ctx.fill();
+
+            let innerDiskGrad = ctx.createRadialGradient(0, 0, eventHorizon, 0, 0, eventHorizon * 1.8);
+            innerDiskGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+            innerDiskGrad.addColorStop(0.5, 'rgba(255, 200, 120, 0.6)');
+            innerDiskGrad.addColorStop(1, 'transparent');
+            
+            ctx.fillStyle = innerDiskGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, eventHorizon * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(0, 0, eventHorizon, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(0, 0, eventHorizon, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        let viewLeft = width/2 - (width/2)/camera.zoom - camera.x - 50;
+        let viewRight = width/2 + (width/2)/camera.zoom - camera.x + 50;
+        let viewTop = height/2 - (height/2)/camera.zoom - camera.y - 50;
+        let viewBottom = height/2 + (height/2)/camera.zoom - camera.y + 50;
+
+        const renderStride = isMobileDevice && camera.zoom < 1 ? 2 : 1;
+
+        for (let c = 0; c < 3; c++) {
+            ctx.fillStyle = colors[c];
+            ctx.beginPath();
+            
+            for (let i = 0; i < N; i++) {
+                if (colorType[i] !== c) continue;
+                if (renderStride > 1 && (i % 4) >= 2) continue;
+                let px = pos[i*2], py = pos[i*2+1];
+                if (px < viewLeft || px > viewRight || py < viewTop || py > viewBottom) continue;
+                let size = mass[i] * 1.8;
+                ctx.rect(px, py, size, size);
+            }
+            ctx.fill();
+        }
+
+        ctx.restore();
+    }
+
+    function loop(currentTime) {
+        let frameTime = (currentTime - lastTime) / 1000;
+        lastTime = currentTime;
+
+        if (frameTime > 0.1) frameTime = 0.1;
+
+        accumulator += frameTime;
+
+        while (accumulator >= TIME_STEP) {
+            updatePhysics(TIME_STEP);
+            accumulator -= TIME_STEP;
+        }
+
+        if (currentTime - lastRenderTime >= renderInterval) {
+            render();
+            lastRenderTime = currentTime;
+        }
+        requestAnimationFrame(loop);
+    }
+
+    document.getElementById('starSlider').addEventListener('input', (e) => {
+        N = parseInt(e.target.value);
+        document.getElementById('starCountVal').textContent = N;
+        createGalaxy();
+    });
+
+    document.getElementById('dmSlider').addEventListener('input', (e) => {
+        darkMatterMultiplier = parseInt(e.target.value);
+        document.getElementById('dmVal').textContent = darkMatterMultiplier;
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', createGalaxy);
+    document.getElementById('clearBhBtn').addEventListener('click', () => blackHoles = []);
+    window.addEventListener('resize', resize);
+
+    function addBlackHoleAt(clientX, clientY) {
+        let worldX = width/2 + (clientX - width/2) / camera.zoom - camera.x;
+        let worldY = height/2 + (clientY - height/2) / camera.zoom - camera.y;
+        blackHoles.push({ x: worldX, y: worldY, mass: 100000, flash: 1.0 });
+    }
+
+    const canvasContainer = document.getElementById('canvas-container');
+
+    canvasContainer.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+            isDragging = true;
+            dragStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            camStart = { x: camera.x, y: camera.y };
+            
+            let touchX = e.touches[0].clientX;
+            let touchY = e.touches[0].clientY;
+
+            longPressTimer = setTimeout(() => {
+                addBlackHoleAt(touchX, touchY);
+                if (navigator.vibrate) navigator.vibrate(60);
+            }, 600);
+        } 
+        else if (e.touches.length === 2) {
+            isDragging = false;
+            clearTimeout(longPressTimer);
+            let dx = e.touches[0].clientX - e.touches[1].clientX;
+            let dy = e.touches[0].clientY - e.touches[1].clientY;
+            initialPinchDistance = Math.hypot(dx, dy);
+            initialZoom = camera.zoom;
+        }
+    }, {passive: false});
+
+    canvasContainer.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        
+        if (e.touches.length === 1 && isDragging) {
+            let dx = e.touches[0].clientX - dragStart.x;
+            let dy = e.touches[0].clientY - dragStart.y;
+
+            if (Math.hypot(dx, dy) > 10) {
+                clearTimeout(longPressTimer);
+            }
+
+            camera.x = camStart.x + dx / camera.zoom;
+            camera.y = camStart.y + dy / camera.zoom;
+        } 
+        else if (e.touches.length === 2 && initialPinchDistance) {
+            clearTimeout(longPressTimer);
+            let dx = e.touches[0].clientX - e.touches[1].clientX;
+            let dy = e.touches[0].clientY - e.touches[1].clientY;
+            let currentDistance = Math.hypot(dx, dy);
+            let zoomFactor = currentDistance / initialPinchDistance;
+            camera.zoom = Math.max(0.1, Math.min(initialZoom * zoomFactor, 3));
+        }
+    }, {passive: false});
+
+    canvasContainer.addEventListener('touchend', () => {
+        isDragging = false;
+        initialPinchDistance = null;
+        clearTimeout(longPressTimer);
+    });
+
+    canvasContainer.addEventListener('wheel', (e) => {
+        camera.zoom = Math.max(0.1, Math.min(camera.zoom * (e.deltaY > 0 ? 0.9 : 1.1), 3));
+    });
+    
+    canvasContainer.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        dragStart = { x: e.clientX, y: e.clientY };
+        camStart = { x: camera.x, y: camera.y };
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        camera.x = camStart.x + (e.clientX - dragStart.x) / camera.zoom;
+        camera.y = camStart.y + (e.clientY - dragStart.y) / camera.zoom;
+    });
+    
+    window.addEventListener('mouseup', () => isDragging = false);
+
+    canvasContainer.addEventListener('dblclick', (e) => {
+        addBlackHoleAt(e.clientX, e.clientY);
+    });
+
+    window.addEventListener('load', () => {
+        applyLanguage(); // Çevirileri yükle
+    });
+</script>
+</body>
+</html>

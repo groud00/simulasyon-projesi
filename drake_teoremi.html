@@ -1,0 +1,1792 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="drake_header_title">Drake Denklemi & SETI Gözlemevi</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-base: #03070d;
+            --bg-surface: #070e17;
+            --bg-panel: #0d1724;
+            --bg-panel-hover: #132236;
+            --accent-cyan: #00f0ff;
+            --accent-teal: #00e5b8;
+            --accent-glow: rgba(0, 240, 255, 0.35);
+            --accent-warning: #f1c40f;
+            --accent-danger: #e74c3c;
+            --text-main: #e6f4f8;
+            --text-muted: #7890a8;
+            --text-dark: #3a5068;
+            --border-color: rgba(0, 240, 255, 0.2);
+            --font-mono: 'Consolas', 'Courier New', monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* GERİ BUTONU & ÇIKIŞ MODALI */
+        .btn-back {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(7, 14, 23, 0.85);
+            border: 1px solid var(--border-color);
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 999;
+            backdrop-filter: blur(10px);
+            transition: transform 0.2s, background 0.2s;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+        }
+
+        .btn-back:active { transform: scale(0.92); }
+        .btn-back svg {
+            width: 20px; height: 20px;
+            fill: none; stroke: currentColor;
+            stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+        }
+
+        .exit-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(3, 7, 13, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .exit-modal-content {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 28px 24px 20px;
+            max-width: 320px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8);
+        }
+
+        .exit-modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .exit-modal-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .exit-modal-actions { display: flex; gap: 12px; }
+
+        .btn-exit-cancel, .btn-exit-confirm {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-exit-cancel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        .btn-exit-confirm {
+            background: var(--accent-cyan);
+            border: none;
+            color: #03070d;
+        }
+
+        /* YILDIZ ARKA PLANI */
+        .stars-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1;
+            background-image: 
+                radial-gradient(1px 1px at 20px 30px, #00f0ff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 40px 70px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 50px 160px, #00e5b8, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 90px 40px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 130px 80px, #00f0ff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 250px 250px;
+            opacity: 0.25;
+        }
+
+        .container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 24px 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+            padding-left: 52px;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: 1.5px;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+        }
+
+        .btn-earth {
+            background: rgba(0, 240, 255, 0.08);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-earth:hover {
+            background: var(--accent-cyan);
+            color: #03070d;
+        }
+
+        /* HERO SECTION */
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 850px) {
+            .hero-grid { grid-template-columns: 1fr; }
+            header { padding-left: 44px; }
+            h1 { font-size: 15px; }
+        }
+
+        .result-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 28px 24px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+        }
+
+        .result-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            font-family: var(--font-mono);
+        }
+
+        .result-value {
+            font-size: 46px;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 20px var(--accent-glow);
+            margin-bottom: 12px;
+            font-family: var(--font-mono);
+        }
+
+        .result-disclaimer {
+            font-size: 11px;
+            color: var(--text-dark);
+        }
+
+        .galaxy-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 12px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 340px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        #galaxyCanvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            display: block;
+        }
+
+        .galaxy-disclaimer {
+            position: absolute;
+            bottom: 14px;
+            font-size: 10px;
+            color: var(--accent-cyan);
+            background: rgba(3, 7, 13, 0.85);
+            padding: 5px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            font-family: var(--font-mono);
+            pointer-events: none;
+            text-align: center;
+            max-width: 90%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* HUD IZGARASI */
+        .hud-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 850px) {
+            .hud-grid { grid-template-columns: 1fr; }
+        }
+
+        .hud-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+            padding-bottom: 8px;
+        }
+
+        .hud-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            font-family: var(--font-mono);
+        }
+
+        .hud-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--accent-cyan);
+            border: 1px solid var(--accent-cyan);
+        }
+
+        .btn-seti-info {
+            background: rgba(0, 240, 255, 0.1);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-seti-info:hover {
+            background: var(--accent-cyan);
+            color: #03070d;
+        }
+
+        .filter-content {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        @media (max-width: 480px) {
+            .filter-content { flex-direction: column; text-align: center; }
+        }
+
+        .filter-radar-container {
+            width: 130px;
+            height: 130px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        #filterCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .filter-info {
+            flex: 1;
+        }
+
+        .filter-stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+        }
+
+        .filter-stat-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: var(--accent-teal);
+            font-family: var(--font-mono);
+            margin-bottom: 8px;
+        }
+
+        .filter-diagnosis {
+            font-size: 12px;
+            color: var(--text-main);
+            line-height: 1.4;
+            background: var(--bg-panel);
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 3px solid var(--accent-cyan);
+        }
+
+        .seti-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .seti-top {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        @media (max-width: 500px) {
+            .seti-top { flex-direction: column; }
+            #oscilloscopeCanvas { width: 100% !important; }
+        }
+
+        #setiRadarCanvas {
+            width: 110px;
+            height: 110px;
+            flex-shrink: 0;
+        }
+
+        #oscilloscopeCanvas {
+            flex: 1;
+            height: 110px;
+            background: #020509;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 240, 255, 0.15);
+        }
+
+        .seti-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            background: var(--bg-panel);
+            padding: 10px;
+            border-radius: 8px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+        }
+
+        .seti-metric-item span {
+            display: block;
+            color: var(--accent-cyan);
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        /* SETI inline açıklama kartı */
+        .seti-explain-box {
+            background: var(--bg-panel);
+            border: 1px dashed var(--border-color);
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-top: 4px;
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .seti-explain-box strong { color: var(--accent-teal); }
+
+        /* KOZMİK ZİNCİR */
+        .chain-section {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 32px;
+            overflow-x: auto;
+        }
+
+        .chain-title {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-family: var(--font-mono);
+        }
+
+        .chain-container {
+            display: flex;
+            align-items: center;
+            min-width: 800px;
+            justify-content: space-between;
+        }
+
+        .chain-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            flex: 1;
+            position: relative;
+        }
+
+        .chain-node:not(:last-child)::after {
+            content: '→';
+            position: absolute;
+            right: -10px; top: 16px;
+            color: var(--text-dark);
+            font-size: 16px;
+        }
+
+        .chain-icon {
+            font-size: 20px;
+            margin-bottom: 6px;
+            background: var(--bg-panel);
+            width: 42px; height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            color: var(--accent-cyan);
+        }
+
+        .chain-name {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .chain-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            font-family: var(--font-mono);
+        }
+
+        /* SENARYOLAR */
+        .scenarios {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn-scenario {
+            flex: 1;
+            min-width: 140px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            transition: 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .btn-scenario span {
+            font-size: 9px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .btn-scenario:hover {
+            background: var(--bg-panel-hover);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        /* KONTROLLER */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .control-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .control-card:hover {
+            border-color: rgba(0, 240, 255, 0.4);
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .control-title-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-info {
+            background: none;
+            border: 1px solid var(--text-dark);
+            color: var(--text-muted);
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            font-size: 10px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .btn-info:hover {
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+
+        .control-certainty {
+            font-size: 10px;
+            margin-top: 4px;
+            font-family: var(--font-mono);
+        }
+
+        .cert-high { color: var(--accent-teal); }
+        .cert-mid { color: var(--accent-warning); }
+        .cert-low { color: var(--accent-danger); }
+
+        .control-value-box {
+            background: var(--bg-panel);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent-cyan);
+            border: 1px solid var(--border-color);
+            min-width: 60px;
+            text-align: center;
+            font-family: var(--font-mono);
+        }
+
+        .slider-container { width: 100%; }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            height: 24px;
+        }
+
+        input[type="range"]:focus { outline: none; }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px;
+            cursor: pointer;
+            background: var(--bg-panel-hover);
+            border-radius: 2px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            height: 16px; width: 16px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 0 10px var(--accent-glow);
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .l-visual-section {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 32px;
+            text-align: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .l-visual-title {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            font-family: var(--font-mono);
+        }
+
+        .l-visual-desc {
+            font-size: 11px;
+            color: var(--text-dark);
+            margin-bottom: 20px;
+        }
+
+        .signal-container {
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .signal-source {
+            width: 8px; height: 8px;
+            background: var(--accent-cyan);
+            border-radius: 50%;
+            position: absolute;
+            z-index: 2;
+            box-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        .signal-wave {
+            position: absolute;
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            border-radius: 50%;
+            opacity: 0;
+            transition: width 0.3s, height 0.3s;
+        }
+
+        /* MONTE CARLO ANALİZİ */
+        .mc-section {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 32px;
+        }
+
+        .mc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .btn-mc {
+            background: var(--accent-cyan);
+            color: #03070d;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            transition: background 0.2s;
+        }
+
+        .btn-mc:hover {
+            background: var(--accent-teal);
+        }
+
+        .mc-canvas-container {
+            height: 240px;
+            width: 100%;
+            position: relative;
+        }
+
+        .mc-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 16px;
+            font-size: 11px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            padding-top: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-family: var(--font-mono);
+        }
+
+        .mc-stat-box span {
+            display: block;
+            font-size: 13px;
+            color: var(--accent-cyan);
+            font-weight: 600;
+            margin-top: 2px;
+        }
+        
+        .mc-disclaimer {
+            font-size: 10px;
+            color: var(--text-dark);
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(3, 7, 13, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 520px;
+            width: 100%;
+            position: relative;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px; right: 16px;
+            background: none; border: none;
+            color: var(--text-muted);
+            font-size: 20px; cursor: pointer;
+        }
+
+        .modal-close:hover { color: var(--accent-cyan); }
+
+        .modal-title {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: var(--accent-cyan);
+            font-family: var(--font-mono);
+        }
+
+        .modal-body {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+        
+        .modal-body strong { color: var(--text-main); }
+        .modal-body ul { margin: 10px 0 10px 20px; }
+        .modal-body li { margin-bottom: 8px; }
+        .modal-body .warn { color: var(--accent-warning); margin-top: 12px; display: block; font-size: 11px; }
+
+    </style>
+</head>
+<body>
+
+    <!-- SOL ÜST GERİ BUTONU -->
+    <button class="btn-back" onclick="openExitModal()" aria-label="Geri">
+        <svg viewBox="0 0 24 24">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+    </button>
+
+    <!-- ANA EKRANA DÖNÜŞ ONAY MODALI -->
+    <div class="exit-modal-overlay" id="exitModal">
+        <div class="exit-modal-content">
+            <div class="exit-modal-title" data-i18n="drake_modal_exit_title">Ana Ekrana Dön</div>
+            <div class="exit-modal-desc" data-i18n="drake_modal_exit_desc">Ana ekrana dönmek istediğinize emin misiniz?</div>
+            <div class="exit-modal-actions">
+                <button class="btn-exit-cancel" onclick="closeExitModal()" data-i18n="drake_modal_cancel">İptal</button>
+                <button class="btn-exit-confirm" onclick="confirmExit()" data-i18n="drake_modal_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="stars-bg"></div>
+
+    <div class="container">
+        <header>
+            <h1 data-i18n="drake_header_title">Drake Denklemi & SETI Gözlemevi</h1>
+            <button class="btn-earth" onclick="openEarthRef()" data-i18n="drake_btn_earth">🌍 Dünya Referansı</button>
+        </header>
+
+        <div class="hero-grid">
+            <div class="result-panel">
+                <div class="result-label" data-i18n="drake_result_label">Samanyolu'ndaki Tespit Edilebilir Medeniyet Sayısı</div>
+                <div class="result-value" id="resultDisplay">0</div>
+                <div class="result-disclaimer" data-i18n="drake_result_disclaimer">N = R* × fp × ne × fl × fi × fc × L<br><br>Bu değer bir gözlem sonucu değil, girilen varsayımların matematiksel sonucudur.</div>
+            </div>
+
+            <div class="galaxy-panel">
+                <canvas id="galaxyCanvas"></canvas>
+                <div class="galaxy-disclaimer" data-i18n="drake_galaxy_disclaimer">📡 Genişleyen Sinyal Küreleri (Sinyal Dalga Cephesi) — Kesişimler Sinyal Temasını Gösterir</div>
+            </div>
+        </div>
+
+        <div class="hud-grid">
+            <div class="hud-card">
+                <div class="hud-header">
+                    <div class="hud-title" data-i18n="drake_filter_title">Büyük Filtre (Great Filter) Analizi</div>
+                    <div class="hud-badge" id="filterStatusBadge" data-i18n="drake_filter_badge_analysis">ANALİZ EDİLİYOR</div>
+                </div>
+                <div class="filter-content">
+                    <div class="filter-radar-container">
+                        <canvas id="filterCanvas"></canvas>
+                    </div>
+                    <div class="filter-info">
+                        <div class="filter-stat-label" data-i18n="drake_filter_label">EVRİMSEL GEÇİŞ OLASILIĞI</div>
+                        <div class="filter-stat-value" id="filterPassedRate">%0.0</div>
+                        <div class="filter-diagnosis" id="filterDiagnosisText" data-i18n="drake_filter_diag_calc">Filtre konumu hesaplanıyor...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hud-card">
+                <div class="hud-header">
+                    <div class="hud-title" data-i18n="drake_seti_title">SETI Radyo Frekans Taraması</div>
+                    <button class="btn-seti-info" onclick="openSETIDetailModal()" data-i18n="drake_btn_seti_info">ℹ️ SETI & Su Deliği Detayı</button>
+                </div>
+                <div class="seti-content">
+                    <div class="seti-top">
+                        <canvas id="setiRadarCanvas"></canvas>
+                        <canvas id="oscilloscopeCanvas"></canvas>
+                    </div>
+                    <div class="seti-metrics">
+                        <div class="seti-metric-item">
+                            <span data-i18n="drake_metric_dist_label">Komşu Mesafesi (D_ort)</span>
+                            <span id="metricDist" data-i18n-dynamic="true">0 Işık Yılı</span>
+                        </div>
+                        <div class="seti-metric-item">
+                            <span data-i18n="drake_metric_delay_label">Çift Yönlü İletişim Yanıtı</span>
+                            <span id="metricDelay" data-i18n-dynamic="true">0 Yıl</span>
+                        </div>
+                    </div>
+                    <div class="seti-explain-box" data-i18n="drake_seti_explain"><strong>Kozmik Su Deliği (1.420 - 1.666 GHz):</strong> Uzayın en sessiz radyo bandında yapay dar-bant osilasyon sinyalleri taranıyor.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chain-section">
+            <div class="chain-title" data-i18n="drake_chain_title">Kozmik Süreç Zinciri (Yıllık Oranlar ve Mevcut Durum)</div>
+            <div class="chain-container">
+                <div class="chain-node">
+                    <div class="chain-icon">⭐</div>
+                    <div class="chain-name" data-i18n="drake_chain_r_name">Yıldız Oluşumu<br>(Yıldız/Yıl)</div>
+                    <div class="chain-value" id="ch_r">0</div>
+                </div>
+                <div class="chain-node">
+                    <div class="chain-icon">🪐</div>
+                    <div class="chain-name" data-i18n="drake_chain_fp_name">Gezegenli Sistem<br>(Sistem/Yıl)</div>
+                    <div class="chain-value" id="ch_fp">0</div>
+                </div>
+                <div class="chain-node">
+                    <div class="chain-icon">🌍</div>
+                    <div class="chain-name" data-i18n="drake_chain_ne_name">Yaşanabilir Gezegen<br>(Gezegen/Yıl)</div>
+                    <div class="chain-value" id="ch_ne">0</div>
+                </div>
+                <div class="chain-node">
+                    <div class="chain-icon">🦠</div>
+                    <div class="chain-name" data-i18n="drake_chain_fl_name">Yaşam<br>(Gezegen/Yıl)</div>
+                    <div class="chain-value" id="ch_fl">0</div>
+                </div>
+                <div class="chain-node">
+                    <div class="chain-icon">🧠</div>
+                    <div class="chain-name" data-i18n="drake_chain_fi_name">Zeki Yaşam<br>(Tür/Yıl)</div>
+                    <div class="chain-value" id="ch_fi">0</div>
+                </div>
+                <div class="chain-node">
+                    <div class="chain-icon">📡</div>
+                    <div class="chain-name" data-i18n="drake_chain_fc_name">Medeniyet Oluşumu<br>(Medeniyet/Yıl)</div>
+                    <div class="chain-value" id="ch_fc">0</div>
+                </div>
+                <div class="chain-node" style="border-bottom: 2px solid var(--accent-cyan); padding-bottom: 8px;">
+                    <div class="chain-icon" style="background: rgba(0, 240, 255, 0.1); border-color: var(--accent-cyan);">🌌</div>
+                    <div class="chain-name" data-i18n="drake_chain_n_name">Eşzamanlı Medeniyet<br>(Mevcut Toplam)</div>
+                    <div class="chain-value" id="ch_n" style="font-size: 15px;">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="scenarios">
+            <button class="btn-scenario" onclick="setScenario('pessimistic')" data-i18n="drake_scenario_pess_label">
+                KÖTÜMSER
+                <span data-i18n="drake_scenario_pess_desc">Nadire Dünya Hipotezi (Düşük Varsayım)</span>
+            </button>
+            <button class="btn-scenario" onclick="setScenario('moderate')" data-i18n="drake_scenario_mod_label">
+                TEMKİNLİ
+                <span data-i18n="drake_scenario_mod_desc">Standart Bilimsel (Orta Varsayım)</span>
+            </button>
+            <button class="btn-scenario" onclick="setScenario('optimistic')" data-i18n="drake_scenario_opt_label">
+                İYİMSER
+                <span data-i18n="drake_scenario_opt_desc">Star Trek Evreni (Yüksek Varsayım)</span>
+            </button>
+        </div>
+
+        <div class="controls-grid">
+            <div class="control-card">
+                <div class="control-header">
+                    <div class="control-title-group">
+                        <div class="control-label"><span data-i18n="drake_ctrl_r_label">Yıldız oluşum hızı (R*)</span> <button class="btn-info" onclick="openInfo('r')">?</button></div>
+                        <div class="control-certainty cert-high" data-i18n="drake_cert_high">Gözlemsel Olarak İyi Kısıtlanmış</div>
+                    </div>
+                    <div class="control-value-box" id="box_r">2.0</div>
+                </div>
+                <div class="slider-container">
+                    <input type="range" id="r" min="0.5" max="10" step="0.1" value="2.0">
+                </div>
+            </div>
+
+            <div class="control-card">
+                <div class="control-header">
+                    <div class="control-title-group">
+                        <div class="control-label"><span data-i18n="drake_ctrl_fp_label">Gezegenli yıldız oranı (fp)</span> <button class="btn-info" onclick="openInfo('fp')">?</button></div>
+                        <div class="control-certainty cert-high" data-i18n="drake_cert_high">Gözlemsel Olarak İyi Kısıtlanmış</div>
+                    </div>
+                    <div class="control-value-box" id="box_fp">1.00</div>
+                </div>
+                <div class="slider-container">
+                    <input type="range" id="fp" min="0" max="1" step="0.01" value="1.0">
+                </div>
+            </div>
+
+            <div class="control-card">
+                <div class="control-header">
+                    <div class="control-title-group">
+                        <div class="control-label"><span data-i18n="drake_ctrl_ne_label">Yaşanabilir gezegen (ne)</span> <button class="btn-info" onclick="openInfo('ne')">?</button></div>
+                        <div class="control-certainty cert-mid" data-i18n="drake_cert_mid">Verilere Dayalı Tahmin (Belirsiz)</div>
+                    </div>
+                    <div class="control-value-box" id="box_ne">1.0</div>
+                </div>
+                <div class="slider-container">
+                    <input type="range" id="ne" min="0" max="5" step="0.1" value="1.0">
+                </div>
+            </div>
+
+            <div class="control-card">
+                <div class="control-header">
+                    <div class="control-title-group">
+                        <div class="control-label"><span data-i18n="drake_ctrl_fl_label">Yaşamın ortaya çıkma olasılığı (fl)</span> <button class="btn-info" onclick="openInfo('fl')">?</button></div>
+                        <div class="control-certainty cert-low" data-i18n="drake_cert_low">Kesin Olarak Bilinmiyor</div>
+                    </div>
+                    <div class="control-value-box" id="box_fl">0.50</div>
+                </div>
+                <div class="slider-container">
+                    <input type="range" id="fl" min="0" max="1" step="0.01" value="0.5">
+                </div>
+            </div>
+
+            <div class="control-card">
+                <div class="control-header">
+                    <div class="control-title-group">
+                        <div class="control-label"><span data-i18n="drake_ctrl_fi_label">Zekânın gelişme olasılığı (fi)</span> <button class="btn-info" onclick="openInfo('fi')">?</button></div>
+                        <div class="control-certainty cert-low" data-i18n="drake_cert_bio">Bilimsel Olarak Belirsiz</div>
+                    </div>
+                    <div class="control-value-box" id="box_fi">0.10</div>
+                </div>
+                <div class="slider-container">
+                    <input type="range" id="fi" min="0" max="1" step="0.01" value="0.1">
+                </div>
+            </div>
+
+            <div class="control-card">
+                <div class="control-header">
+                    <div class="control-title-group">
+                        <div class="control-label"><span data-i18n="drake_ctrl_fc_label">Teknolojik medeniyet olasılığı (fc)</span> <button class="btn-info" onclick="openInfo('fc')">?</button></div>
+                        <div class="control-certainty cert-low" data-i18n="drake_cert_var">Varsayıma Bağlı</div>
+                    </div>
+                    <div class="control-value-box" id="box_fc">0.10</div>
+                </div>
+                <div class="slider-container">
+                    <input type="range" id="fc" min="0" max="1" step="0.01" value="0.1">
+                </div>
+            </div>
+
+            <div class="control-card" style="grid-column: 1 / -1;">
+                <div class="control-header">
+                    <div class="control-title-group">
+                        <div class="control-label"><span data-i18n="drake_ctrl_l_label">Teknolojik tespit edilebilirlik süresi (L)</span> <button class="btn-info" onclick="openInfo('l')">?</button></div>
+                        <div class="control-certainty cert-low" data-i18n="drake_cert_spec">Son Derece Spekülatif</div>
+                    </div>
+                    <div class="control-value-box" id="box_l">10.000 Yıl</div>
+                </div>
+                <div class="slider-container">
+                    <input type="range" id="l" min="100" max="10000000" step="100" value="10000">
+                </div>
+            </div>
+        </div>
+
+        <div class="l-visual-section">
+            <div class="l-visual-title" data-i18n="drake_l_visual_title">Sinyal Uzaydaki Etki Alanı (L Etkisi)</div>
+            <div class="l-visual-desc" data-i18n="drake_l_visual_desc">Kavramsal gösterim: Medeniyetin aktif kaldığı süre (L) arttıkça, sinyalleri uzayda daha geniş bir hacme yayılır.</div>
+            <div class="signal-container" id="signalContainer">
+                <div class="signal-source"></div>
+                <div class="signal-wave" id="sWave1"></div>
+                <div class="signal-wave" id="sWave2"></div>
+                <div class="signal-wave" id="sWave3"></div>
+            </div>
+        </div>
+
+        <div class="mc-section">
+            <div class="mc-header">
+                <div>
+                    <h2 style="font-size: 15px; margin-bottom: 4px; color: var(--accent-cyan); font-family: var(--font-mono);" data-i18n="drake_mc_title">Belirsizlik Analizi (Monte Carlo Simülasyonu)</h2>
+                    <p style="font-size: 11px; color: var(--text-muted);" data-i18n="drake_mc_desc">Parametrelerdeki bilimsel belirsizlikleri hesaba katarak 20.000 farklı rastgele evren senaryosu test eder.</p>
+                </div>
+                <button class="btn-mc" onclick="runMonteCarlo()" id="btnMC" data-i18n="drake_btn_mc">Simülasyonu Başlat</button>
+            </div>
+            <div class="mc-canvas-container">
+                <canvas id="mcChart"></canvas>
+            </div>
+            <div class="mc-stats" id="mcStats" style="display: none;">
+                <div class="mc-stat-box"><span data-i18n="drake_mc_stat_min">Minimum N:</span> <span id="mc_min">0</span></div>
+                <div class="mc-stat-box"><span data-i18n="drake_mc_stat_med">Medyan N:</span> <span id="mc_med">0</span></div>
+                <div class="mc-stat-box"><span data-i18n="drake_mc_stat_mean">Ortalama N:</span> <span id="mc_mean">0</span></div>
+                <div class="mc-stat-box"><span data-i18n="drake_mc_stat_max">Maksimum N:</span> <span id="mc_max">0</span></div>
+            </div>
+            <div class="mc-disclaimer" data-i18n="drake_mc_disclaimer">Sonuç, seçilen varsayımlara bağlı bir olasılık dağılımıdır; gözlemsel olarak doğrulanmış bir medeniyet sayısı değildir.</div>
+        </div>
+
+    </div>
+
+    <!-- MODALLAR -->
+    <div class="modal-overlay" id="infoModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('infoModal')">&times;</button>
+            <h3 class="modal-title" id="m_title">Başlık</h3>
+            <div class="modal-body" id="m_body">Açıklama</div>
+        </div>
+    </div>
+
+    <script src="lang.js"></script>
+    <script>
+        function openExitModal() { document.getElementById('exitModal').style.display = 'flex'; }
+        function closeExitModal() { document.getElementById('exitModal').style.display = 'none'; }
+        function confirmExit() { window.location.href = 'index.html'; }
+        document.getElementById('exitModal').addEventListener('click', function(e) {
+            if (e.target === this) closeExitModal();
+        });
+
+        function updateSETIMetrics() {
+            const distElem = document.getElementById('metricDist');
+            const delayElem = document.getElementById('metricDelay');
+
+            if (currentN < 1) {
+                distElem.innerText = t('drake_metric_dist_solitary');
+                delayElem.innerText = t('drake_metric_delay_none');
+            } else {
+                const avgDist = Math.round(44300 / Math.sqrt(currentN));
+                const distStr = avgDist.toLocaleString(currentLang === 'en' ? 'en-US' : 'tr-TR');
+                const delayStr = (avgDist * 2).toLocaleString(currentLang === 'en' ? 'en-US' : 'tr-TR');
+                
+                distElem.innerText = distStr + ' ' + t('drake_unit_light_years');
+                delayElem.innerText = delayStr + ' ' + t('drake_unit_year_short');
+            }
+        }
+
+        function updateValues() {
+            const r = parseFloat(document.getElementById('r').value);
+            const fp = parseFloat(document.getElementById('fp').value);
+            const ne = parseFloat(document.getElementById('ne').value);
+            const fl = parseFloat(document.getElementById('fl').value);
+            const fi = parseFloat(document.getElementById('fi').value);
+            const fc = parseFloat(document.getElementById('fc').value);
+            const l = parseFloat(document.getElementById('l').value);
+
+            currentFl = fl; currentFi = fi; currentFc = fc; currentL = l;
+
+            document.getElementById('box_r').innerText = r.toFixed(1);
+            document.getElementById('box_fp').innerText = fp.toFixed(2);
+            document.getElementById('box_ne').innerText = ne.toFixed(1);
+            document.getElementById('box_fl').innerText = fl.toFixed(2);
+            document.getElementById('box_fi').innerText = fi.toFixed(2);
+            document.getElementById('box_fc').innerText = fc.toFixed(2);
+            
+            // L değeri i18n kullanarak
+            const lFormatted = Math.round(l).toLocaleString(currentLang === 'en' ? 'en-US' : 'tr-TR');
+            document.getElementById('box_l').innerText = lFormatted + ' ' + t('drake_unit_year_short');
+
+            const v_fp = r * fp;
+            const v_ne = v_fp * ne;
+            const v_fl = v_ne * fl;
+            const v_fi = v_fl * fi;
+            const v_fc = v_fi * fc;
+            const N = v_fc * l;
+            currentN = N;
+
+            document.getElementById('ch_r').innerText = formatNum(r, 1);
+            document.getElementById('ch_fp').innerText = formatNum(v_fp, 2);
+            document.getElementById('ch_ne').innerText = formatNum(v_ne, 2);
+            document.getElementById('ch_fl').innerText = formatNum(v_fl, 4);
+            document.getElementById('ch_fi').innerText = formatNum(v_fi, 5);
+            document.getElementById('ch_fc').innerText = formatNum(v_fc, 6);
+            document.getElementById('ch_n').innerText = formatNum(N);
+
+            let displayTxt = formatNum(N);
+            if(N < 0.001 && N > 0) displayTxt = t('drake_result_near_zero');
+            else if(N === 0) displayTxt = t('drake_result_zero');
+            
+            document.getElementById('resultDisplay').innerText = displayTxt;
+
+            updateLVisual(l);
+            updateGreatFilterDiagnosis();
+            updateSETIMetrics();
+        }
+
+        function formatNum(num, digits=2) {
+            const locale = currentLang === 'en' ? 'en-US' : 'tr-TR';
+            if (num === 0) return "0";
+            if (num < 1 && num > 0) {
+                if (num < 0.000001) return num.toExponential(2).replace('e-', ' × 10^-');
+                const decimals = Math.max(digits, -Math.floor(Math.log10(num)) + 2);
+                return num.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: decimals });
+            }
+            if (num >= 1000000) return num.toExponential(2).replace('e+', ' × 10^');
+            return Math.round(num).toLocaleString(locale);
+        }
+
+        // InfoData'yı dinamik olarak oluştur (t() fonksiyonu hazır olduğunda)
+        function getInfoData() {
+            return {
+                'r': { title: t('drake_info_r_title'), body: t('drake_info_r_body') },
+                'fp': { title: t('drake_info_fp_title'), body: t('drake_info_fp_body') },
+                'ne': { title: t('drake_info_ne_title'), body: t('drake_info_ne_body') },
+                'fl': { title: t('drake_info_fl_title'), body: t('drake_info_fl_body') },
+                'fi': { title: t('drake_info_fi_title'), body: t('drake_info_fi_body') },
+                'fc': { title: t('drake_info_fc_title'), body: t('drake_info_fc_body') },
+                'l': { title: t('drake_info_l_title'), body: t('drake_info_l_body') },
+                'earth': { title: t('drake_info_earth_title'), body: t('drake_info_earth_body') },
+                'seti_detail': { 
+                    title: t('drake_info_seti_title'), 
+                    body: t('drake_info_seti_body')
+                }
+            };
+        }
+
+        function openInfo(key) {
+            const infoData = getInfoData(); // Her açılışta yeni veri çek
+            document.getElementById('m_title').innerHTML = infoData[key].title;
+            document.getElementById('m_body').innerHTML = infoData[key].body;
+            document.getElementById('infoModal').style.display = 'flex';
+        }
+        function openEarthRef() { openInfo('earth'); }
+        function openSETIDetailModal() { openInfo('seti_detail'); }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        document.getElementById('infoModal').addEventListener('click', function(e) {
+            if(e.target === this) closeModal('infoModal');
+        });
+
+        let currentN = 0;
+        let currentFl = 0.5, currentFi = 0.1, currentFc = 0.1, currentL = 10000;
+
+        function updateValues() {
+            const r = parseFloat(document.getElementById('r').value);
+            const fp = parseFloat(document.getElementById('fp').value);
+            const ne = parseFloat(document.getElementById('ne').value);
+            const fl = parseFloat(document.getElementById('fl').value);
+            const fi = parseFloat(document.getElementById('fi').value);
+            const fc = parseFloat(document.getElementById('fc').value);
+            const l = parseFloat(document.getElementById('l').value);
+
+            currentFl = fl; currentFi = fi; currentFc = fc; currentL = l;
+
+            document.getElementById('box_r').innerText = r.toFixed(1);
+            document.getElementById('box_fp').innerText = fp.toFixed(2);
+            document.getElementById('box_ne').innerText = ne.toFixed(1);
+            document.getElementById('box_fl').innerText = fl.toFixed(2);
+            document.getElementById('box_fi').innerText = fi.toFixed(2);
+            document.getElementById('box_fc').innerText = fc.toFixed(2);
+            
+            // L değeri i18n kullanarak
+            const lFormatted = Math.round(l).toLocaleString(currentLang === 'en' ? 'en-US' : 'tr-TR');
+            document.getElementById('box_l').innerText = lFormatted + ' ' + t('drake_unit_year_short');
+
+            const v_fp = r * fp;
+            const v_ne = v_fp * ne;
+            const v_fl = v_ne * fl;
+            const v_fi = v_fl * fi;
+            const v_fc = v_fi * fc;
+            const N = v_fc * l;
+            currentN = N;
+
+            document.getElementById('ch_r').innerText = formatNum(r, 1);
+            document.getElementById('ch_fp').innerText = formatNum(v_fp, 2);
+            document.getElementById('ch_ne').innerText = formatNum(v_ne, 2);
+            document.getElementById('ch_fl').innerText = formatNum(v_fl, 4);
+            document.getElementById('ch_fi').innerText = formatNum(v_fi, 5);
+            document.getElementById('ch_fc').innerText = formatNum(v_fc, 6);
+            document.getElementById('ch_n').innerText = formatNum(N);
+
+            let displayTxt = formatNum(N);
+            if(N < 0.001 && N > 0) displayTxt = t('drake_result_near_zero');
+            else if(N === 0) displayTxt = t('drake_result_zero');
+            
+            document.getElementById('resultDisplay').innerText = displayTxt;
+
+            updateLVisual(l);
+            updateGreatFilterDiagnosis();
+            updateSETIMetrics();
+        }
+
+        function setScenario(type) {
+            const presets = {
+                'pessimistic': { r: 1.5, fp: 0.8, ne: 0.1, fl: 0.01, fi: 0.01, fc: 0.01, l: 100 },
+                'moderate': { r: 2.0, fp: 1.0, ne: 1.0, fl: 0.5, fi: 0.1, fc: 0.1, l: 10000 },
+                'optimistic': { r: 3.0, fp: 1.0, ne: 2.0, fl: 1.0, fi: 0.5, fc: 0.5, l: 1000000 }
+            };
+            const p = presets[type];
+            document.getElementById('r').value = p.r;
+            document.getElementById('fp').value = p.fp;
+            document.getElementById('ne').value = p.ne;
+            document.getElementById('fl').value = p.fl;
+            document.getElementById('fi').value = p.fi;
+            document.getElementById('fc').value = p.fc;
+            document.getElementById('l').value = p.l;
+            updateValues();
+        }
+
+        function updateGreatFilterDiagnosis() {
+            const bioProb = currentFl * currentFi * currentFc;
+            const survivalRate = Math.min(99.9, Math.max(0.1, (bioProb * 100)));
+
+            document.getElementById('filterPassedRate').innerText = "%" + survivalRate.toFixed(1);
+
+            const badge = document.getElementById('filterStatusBadge');
+            const diagnosis = document.getElementById('filterDiagnosisText');
+
+            if (bioProb < 0.001) {
+                badge.innerText = t('drake_filter_behind_badge');
+                badge.style.borderColor = "#00e5b8";
+                badge.style.color = "#00e5b8";
+                diagnosis.innerHTML = "<strong>" + t('drake_filter_behind_title') + "</strong> " + t('drake_filter_behind_desc');
+            } else if (currentL < 5000) {
+                badge.innerText = t('drake_filter_ahead_badge');
+                badge.style.borderColor = "#e74c3c";
+                badge.style.color = "#e74c3c";
+                diagnosis.innerHTML = "<strong>" + t('drake_filter_ahead_title') + "</strong> " + t('drake_filter_ahead_desc');
+            } else {
+                badge.innerText = t('drake_filter_balanced_badge');
+                badge.style.borderColor = "#00f0ff";
+                badge.style.color = "#00f0ff";
+                diagnosis.innerHTML = "<strong>" + t('drake_filter_balanced_title') + "</strong> " + t('drake_filter_balanced_desc');
+            }
+        }
+        function updateSETIMetrics() {
+            const distElem = document.getElementById('metricDist');
+            const delayElem = document.getElementById('metricDelay');
+
+            if (currentN < 1) {
+                distElem.innerText = t('drake_metric_dist_solitary');
+                delayElem.innerText = t('drake_metric_delay_none');
+            } else {
+                const avgDist = Math.round(44300 / Math.sqrt(currentN));
+                const distStr = avgDist.toLocaleString(currentLang === 'en' ? 'en-US' : 'tr-TR');
+                const delayStr = (avgDist * 2).toLocaleString(currentLang === 'en' ? 'en-US' : 'tr-TR');
+                
+                distElem.innerText = distStr + ' ' + t('drake_unit_light_years');
+                delayElem.innerText = delayStr + ' ' + t('drake_unit_year_short');
+            }
+        }
+
+        function updateLVisual(lVal) {
+            const minLog = Math.log10(100);
+            const maxLog = Math.log10(10000000);
+            const valLog = Math.log10(lVal || 100);
+            const ratio = (valLog - minLog) / (maxLog - minLog);
+
+            const currentSize = 20 + (ratio * 240);
+            const waves = [document.getElementById('sWave1'), document.getElementById('sWave2'), document.getElementById('sWave3')];
+
+            waves.forEach((wave, i) => {
+                const s = currentSize * (1 - (i*0.25));
+                wave.style.width = s + 'px';
+                wave.style.height = s + 'px';
+                wave.style.opacity = Math.max(0, 0.8 - (i*0.2) - (1-ratio)*0.5);
+            });
+        }
+
+        const inputs = ['r', 'fp', 'ne', 'fl', 'fi', 'fc', 'l'];
+        inputs.forEach(id => document.getElementById(id).addEventListener('input', updateValues));
+
+        // CANVAS YÖNETİMİ
+        const canvas = document.getElementById('galaxyCanvas');
+        const ctx = canvas.getContext('2d');
+        const oCanvas = document.getElementById('oscilloscopeCanvas');
+        const oCtx = oCanvas.getContext('2d');
+        const fCanvas = document.getElementById('filterCanvas');
+        const fCtx = fCanvas.getContext('2d');
+
+        let backgroundStars = [];
+        let animTime = 0;
+        let lastFrameTime = performance.now();
+
+        function resizeCanvases() {
+            const dpr = window.devicePixelRatio || 1;
+
+            // Galaxy Canvas Resize
+            const gParent = canvas.parentElement;
+            if (gParent) {
+                const rect = gParent.getBoundingClientRect();
+                const cssW = Math.max(200, rect.width);
+                const cssH = Math.max(200, rect.height);
+                
+                canvas.width = Math.floor(cssW * dpr);
+                canvas.height = Math.floor(cssH * dpr);
+                canvas.style.width = cssW + 'px';
+                canvas.style.height = cssH + 'px';
+                ctx.resetTransform();
+                ctx.scale(dpr, dpr);
+                
+                initStars(cssW, cssH);
+            }
+
+            // Oscilloscope Resize
+            const oParent = oCanvas.parentElement;
+            if (oParent) {
+                const rect = oParent.getBoundingClientRect();
+                const cssW = Math.max(100, rect.width);
+                const cssH = 110;
+
+                oCanvas.width = Math.floor(cssW * dpr);
+                oCanvas.height = Math.floor(cssH * dpr);
+                oCanvas.style.width = cssW + 'px';
+                oCanvas.style.height = cssH + 'px';
+                oCtx.resetTransform();
+                oCtx.scale(dpr, dpr);
+            }
+
+            // Filter Canvas Resize
+            const fParent = fCanvas.parentElement;
+            if (fParent) {
+                const rect = fParent.getBoundingClientRect();
+                const cssW = Math.max(80, rect.width);
+                const cssH = Math.max(80, rect.height);
+
+                fCanvas.width = Math.floor(cssW * dpr);
+                fCanvas.height = Math.floor(cssH * dpr);
+                fCanvas.style.width = cssW + 'px';
+                fCanvas.style.height = cssH + 'px';
+                fCtx.resetTransform();
+                fCtx.scale(dpr, dpr);
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvases);
+
+        function initStars(w, h) {
+            backgroundStars = [];
+            const cx = w / 2;
+            const cy = h / 2;
+            const maxRadius = Math.max(10, Math.min(cx, cy) - 15);
+
+            for(let i = 0; i < 900; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.pow(Math.random(), 1.4) * maxRadius;
+                backgroundStars.push({
+                    baseX: Math.cos(angle) * radius,
+                    baseY: Math.sin(angle) * radius,
+                    size: Math.random() * 1.3 + 0.3,
+                    alpha: Math.random() * 0.5 + 0.2,
+                    speed: 0.0002 + Math.random() * 0.0006
+                });
+            }
+        }
+
+        function seededRandom(seed) {
+            let s = (seed * 9301 + 49297) % 233280;
+            return { val: s / 233280, nextSeed: s };
+        }
+
+        function drawGalaxy(nowTime) {
+            if (!nowTime) nowTime = performance.now();
+            
+            let dt = Math.max(0, Math.min(0.1, (nowTime - lastFrameTime) / 1000));
+            lastFrameTime = nowTime;
+            animTime += dt;
+
+            try {
+                const cssW = parseFloat(canvas.style.width) || canvas.width;
+                const cssH = parseFloat(canvas.style.height) || canvas.height;
+                const cx = cssW / 2;
+                const cy = cssH / 2;
+                const maxRadius = Math.max(10, Math.min(cx, cy) - 20);
+
+                ctx.clearRect(0, 0, cssW, cssH);
+
+                // Galaksi Çekirdek Işıldaması
+                const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(10, maxRadius));
+                grad.addColorStop(0, 'rgba(0, 240, 255, 0.12)');
+                grad.addColorStop(0.5, 'rgba(0, 150, 255, 0.04)');
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, cssW, cssH);
+
+                // Arka Plan Yıldızları
+                backgroundStars.forEach(p => {
+                    const cosT = Math.cos(p.speed * animTime * 60);
+                    const sinT = Math.sin(p.speed * animTime * 60);
+                    const rotX = p.baseX * cosT - p.baseY * sinT;
+                    const rotY = p.baseX * sinT + p.baseY * cosT;
+                    ctx.globalAlpha = p.alpha;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(cx + rotX, cy + rotY, Math.max(0.1, p.size), 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                // MEDENİYETLER VE IŞIK HIZI İLETİŞİM BALONLARI
+                let numCivs = Math.min(Math.floor(currentN), 80);
+                if (currentN > 0 && numCivs === 0) numCivs = 1;
+
+                const activeCivs = [];
+                let currentSeed = 54321;
+
+                for(let i = 0; i < numCivs; i++) {
+                    let rObj1 = seededRandom(currentSeed);
+                    const angle = rObj1.val * Math.PI * 2;
+                    let rObj2 = seededRandom(rObj1.nextSeed);
+                    currentSeed = rObj2.nextSeed;
+
+                    const radius = Math.pow(rObj2.val, 0.75) * (maxRadius * 0.85);
+                    const cosT = Math.cos(0.0003 * animTime * 60);
+                    const sinT = Math.sin(0.0003 * animTime * 60);
+                    const bx = Math.cos(angle) * radius;
+                    const by = Math.sin(angle) * radius;
+                    
+                    const x = cx + (bx * cosT - by * sinT);
+                    const y = cy + (bx * sinT + by * cosT);
+                    activeCivs.push({ x, y, id: i });
+                }
+
+                activeCivs.forEach((civ, index) => {
+                    ctx.globalAlpha = 1.0;
+                    ctx.fillStyle = (index === 0) ? '#00f0ff' : '#00e5b8';
+                    ctx.beginPath();
+                    ctx.arc(civ.x, civ.y, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = 'rgba(0, 240, 255, 0.4)';
+                    ctx.beginPath();
+                    ctx.arc(civ.x, civ.y, 7, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // İLETİŞİM BALONLARI (DALGALAR)
+                    const maxWaveRadius = Math.max(30, maxRadius * 0.45);
+                    const cycleSpeed = 25; 
+                    const waveOffset = index * 12;
+                    
+                    for(let w = 0; w < 3; w++) {
+                        let rawProgress = ((animTime * cycleSpeed + waveOffset + w * (maxWaveRadius / 3)) % maxWaveRadius);
+                        const safeRadius = Math.max(0.1, Math.abs(rawProgress));
+                        const waveAlpha = Math.max(0, (1 - safeRadius / maxWaveRadius) * 0.65);
+
+                        ctx.strokeStyle = (index === 0) 
+                            ? `rgba(0, 240, 255, ${waveAlpha})` 
+                            : `rgba(0, 229, 184, ${waveAlpha})`;
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        ctx.arc(civ.x, civ.y, safeRadius, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                });
+
+                // IŞIK KONİSİ SİNYAL KESİŞİMLERİ (BAĞLANTI ÇİZGİLERİ)
+                const maxConnectDist = Math.max(35, maxRadius * 0.45);
+                for(let i = 0; i < activeCivs.length; i++) {
+                    for(let j = i + 1; j < activeCivs.length; j++) {
+                        const dx = activeCivs[i].x - activeCivs[j].x;
+                        const dy = activeCivs[i].y - activeCivs[j].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < maxConnectDist) {
+                            const lineAlpha = Math.max(0, (1 - dist / maxConnectDist) * 0.7);
+                            ctx.strokeStyle = `rgba(0, 240, 255, ${lineAlpha})`;
+                            ctx.lineWidth = 1.2;
+                            ctx.setLineDash([3, 3]);
+                            ctx.beginPath();
+                            ctx.moveTo(activeCivs[i].x, activeCivs[i].y);
+                            ctx.lineTo(activeCivs[j].x, activeCivs[j].y);
+                            ctx.stroke();
+                            ctx.setLineDash([]);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Galaxy Render Error:", err);
+            }
+
+            requestAnimationFrame(drawGalaxy);
+        }
+
+        function drawFilterRadar() {
+            const cssW = parseFloat(fCanvas.style.width) || 130;
+            const cssH = parseFloat(fCanvas.style.height) || 130;
+            fCtx.clearRect(0, 0, cssW, cssH);
+
+            const cx = cssW / 2;
+            const cy = cssH / 2;
+            const maxR = Math.max(5, Math.min(cx, cy) - 5);
+
+            fCtx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
+            fCtx.lineWidth = 1;
+            [0.3, 0.65, 0.95].forEach(rRatio => {
+                fCtx.beginPath();
+                fCtx.arc(cx, cy, Math.max(0.1, maxR * rRatio), 0, Math.PI * 2);
+                fCtx.stroke();
+            });
+
+            fCtx.strokeStyle = 'rgba(0, 240, 255, 0.3)';
+            fCtx.beginPath();
+            fCtx.moveTo(cx, 5); fCtx.lineTo(cx, cssH - 5);
+            fCtx.moveTo(5, cy); fCtx.lineTo(cssW - 5, cy);
+            fCtx.stroke();
+
+            const angle = (performance.now() * 0.0018) % (Math.PI * 2);
+            fCtx.strokeStyle = '#00f0ff';
+            fCtx.lineWidth = 1.5;
+            fCtx.beginPath();
+            fCtx.moveTo(cx, cy);
+            fCtx.lineTo(cx + Math.cos(angle) * maxR, cy + Math.sin(angle) * maxR);
+            fCtx.stroke();
+
+            requestAnimationFrame(drawFilterRadar);
+        }
+
+        const sRadar = document.getElementById('setiRadarCanvas');
+        const rCtx = sRadar.getContext('2d');
+
+        function drawSETI() {
+            const dpr = window.devicePixelRatio || 1;
+            sRadar.width = 110 * dpr;
+            sRadar.height = 110 * dpr;
+            sRadar.style.width = '110px';
+            sRadar.style.height = '110px';
+            rCtx.resetTransform();
+            rCtx.scale(dpr, dpr);
+
+            rCtx.clearRect(0, 0, 110, 110);
+            const cx = 55, cy = 55;
+            rCtx.strokeStyle = 'rgba(0, 229, 184, 0.25)';
+            rCtx.lineWidth = 1;
+            [15, 30, 45].forEach(r => {
+                rCtx.beginPath(); rCtx.arc(cx, cy, r, 0, Math.PI * 2); rCtx.stroke();
+            });
+
+            const angle = (performance.now() * 0.0022) % (Math.PI * 2);
+            rCtx.strokeStyle = '#00e5b8';
+            rCtx.lineWidth = 1.5;
+            rCtx.beginPath();
+            rCtx.moveTo(cx, cy);
+            rCtx.lineTo(cx + Math.cos(angle) * 45, cy + Math.sin(angle) * 45);
+            rCtx.stroke();
+
+            // Osiloskop
+            const oW = parseFloat(oCanvas.style.width) || 200;
+            const oH = parseFloat(oCanvas.style.height) || 110;
+
+            oCtx.clearRect(0, 0, oW, oH);
+            oCtx.strokeStyle = '#00f0ff';
+            oCtx.lineWidth = 1.5;
+            oCtx.beginPath();
+
+            const timeNow = performance.now() * 0.005;
+            const signalPower = Math.min(1, currentN / 300);
+
+            for (let x = 0; x < oW; x++) {
+                const noise = (Math.random() - 0.5) * (18 * (1 - signalPower * 0.75));
+                const wave = Math.sin(x * 0.06 + timeNow) * (28 * signalPower);
+                const y = (oH / 2) + noise + wave;
+                if (x === 0) oCtx.moveTo(x, y);
+                else oCtx.lineTo(x, y);
+            }
+            oCtx.stroke();
+
+            requestAnimationFrame(drawSETI);
+        }
+
+        let mcChartInst = null;
+        function runMonteCarlo() {
+            const btn = document.getElementById('btnMC');
+            btn.innerText = t('drake_btn_mc_running');
+            btn.disabled = true;
+
+            const workerScript = `
+                self.onmessage = function(e) {
+                    const iter = 20000;
+                    const results = new Float32Array(iter);
+                    
+                    function logUniform(min, max) {
+                        return Math.exp(Math.log(min) + Math.random() * (Math.log(max) - Math.log(min)));
+                    }
+                    function normalDist(mean, std) {
+                        let u = 0, v = 0;
+                        while(u === 0) u = Math.random();
+                        while(v === 0) v = Math.random();
+                        return (Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v)) * std + mean;
+                    }
+
+                    for(let i=0; i<iter; i++) {
+                        const r = Math.max(0.5, Math.min(10, normalDist(2.0, 0.5)));
+                        const fp = Math.max(0.1, Math.min(1.0, normalDist(0.8, 0.2)));
+                        const ne = Math.max(0.01, Math.min(5.0, normalDist(1.0, 0.5)));
+                        const fl = logUniform(1e-6, 1.0);
+                        const fi = logUniform(1e-6, 1.0);
+                        const fc = logUniform(1e-4, 1.0);
+                        const l = logUniform(100, 10000000);
+                        results[i] = r * fp * ne * fl * fi * fc * l;
+                    }
+
+                    results.sort();
+                    const min = results[0], max = results[iter-1];
+                    const med = results[Math.floor(iter/2)];
+                    const mean = results.reduce((a,b)=>a+b, 0) / iter;
+
+                    const bins = 35;
+                    const hist = new Array(bins).fill(0);
+                    const logMin = Math.log10(Math.max(1e-10, min));
+                    const logMax = Math.log10(max);
+                    
+                    for(let i=0; i<iter; i++) {
+                        let val = Math.max(1e-10, results[i]);
+                        let b = Math.floor(((Math.log10(val) - logMin) / (logMax - logMin)) * bins);
+                        if(b >= bins) b = bins-1; if(b < 0) b = 0;
+                        hist[b]++;
+                    }
+
+                    const labels = [];
+                    for(let i=0; i<bins; i++) {
+                        labels.push("10^" + (logMin + (i * (logMax - logMin) / bins)).toFixed(1));
+                    }
+
+                    self.postMessage({ min, max, med, mean, hist, labels });
+                };
+            `;
+
+            const blob = new Blob([workerScript], {type: 'application/javascript'});
+            const worker = new Worker(URL.createObjectURL(blob));
+
+            worker.onmessage = function(e) {
+                const { min, max, med, mean, hist, labels } = e.data;
+                document.getElementById('mc_min').innerText = formatNum(min);
+                document.getElementById('mc_med').innerText = formatNum(med);
+                document.getElementById('mc_mean').innerText = formatNum(mean);
+                document.getElementById('mc_max').innerText = formatNum(max);
+                document.getElementById('mcStats').style.display = 'flex';
+
+                drawChart(labels, hist);
+                btn.innerText = t('drake_btn_mc_retry');
+                btn.disabled = false;
+                worker.terminate();
+            };
+            worker.postMessage({});
+        }
+
+        function drawChart(labels, data) {
+            const ctxChart = document.getElementById('mcChart').getContext('2d');
+            if(mcChartInst) mcChartInst.destroy();
+
+            mcChartInst = new Chart(ctxChart, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: t('drake_chart_label'),
+                        data: data,
+                        backgroundColor: 'rgba(0, 240, 255, 0.4)',
+                        borderColor: 'rgba(0, 240, 255, 0.9)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#7890a8', maxTicksLimit: 10 }, grid: { color: 'rgba(0,240,255,0.05)' } },
+                        y: { ticks: { color: '#7890a8' }, grid: { color: 'rgba(0,240,255,0.05)' } }
+                    }
+                }
+            });
+        }
+
+        window.onload = function() {
+            updateValues();
+            resizeCanvases();
+            lastFrameTime = performance.now();
+            drawGalaxy();
+            drawFilterRadar();
+            drawSETI();
+        };
+    </script>
+</body>
+</html>

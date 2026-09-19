@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="dp_page_title">Çift Sarkaç Kaos Simülasyonu</title>
+    <script src="lang.js"></script>
+    <style>
+        :root {
+            --bg-color: #030305;
+            --surface-color: #0d0d14;
+            --surface-light: #161622;
+            --text-main: #f0f0f5;
+            --text-muted: #8a8a9e;
+            --c-cyan: #00e5ff;
+            --c-pink: #ff007f;
+            --c-green: #00ff66;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow-x: hidden;
+            overscroll-behavior-y: none;
+        }
+
+        /* Görsel Alan */
+        .visual-area {
+            position: relative;
+            width: 100vw;
+            height: 48vh;
+            background-color: #000;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* Geri Butonu (Sol Üst) */
+        .back-btn {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            transition: background 0.2s, transform 0.1s;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .back-btn:active {
+            transform: scale(0.92);
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Alt İçerik ve Kontrol Alanı */
+        .content-area {
+            padding: 16px 20px;
+            height: 52vh;
+            overflow-y: auto;
+        }
+
+        .header { margin-bottom: 16px; text-align: center; }
+        h1 { font-size: 20px; font-weight: 800; margin: 0 0 4px 0; color: #fff; }
+        .subtitle { font-size: 12px; color: var(--text-muted); margin: 0; }
+
+        .control-block {
+            background-color: var(--surface-color);
+            padding: 16px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .control-group { margin-bottom: 14px; }
+        label { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; margin-bottom: 8px; color: var(--c-cyan); }
+        input[type="range"] { width: 100%; accent-color: var(--c-cyan); }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 11px 6px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 11px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .btn-cyan { background: rgba(0, 229, 255, 0.12); border: 1px solid var(--c-cyan); color: var(--c-cyan); }
+        .btn-cyan:active { background: var(--c-cyan); color: #000; transform: scale(0.98); }
+
+        .btn-pink { background: rgba(255, 0, 127, 0.12); border: 1px solid var(--c-pink); color: var(--c-pink); }
+        .btn-pink:active { background: var(--c-pink); color: #fff; transform: scale(0.98); }
+
+        /* Bilgi Kartları */
+        .explanation-section { display: flex; flex-direction: column; gap: 14px; padding-bottom: 30px; }
+        
+        .info-card { 
+            background-color: var(--surface-color); 
+            border-radius: 12px; 
+            padding: 14px; 
+            border-left: 4px solid;
+        }
+        .info-card.cyan { border-left-color: var(--c-cyan); }
+        .info-card.pink { border-left-color: var(--c-pink); }
+        .info-card.green { border-left-color: var(--c-green); }
+
+        .info-card h3 { margin: 0 0 6px 0; font-size: 13px; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-card p { margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+        .info-card strong { color: #fff; }
+
+        /* Ana Ekran Onay Modalı */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background-color: #0f131d;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 24px 20px;
+            width: 85%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            margin: 0 0 10px 0;
+            font-size: 17px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .modal-desc {
+            margin: 0 0 20px 0;
+            font-size: 13px;
+            color: #a0a0b0;
+            line-height: 1.4;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 0;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .modal-btn:active {
+            transform: scale(0.96);
+        }
+
+        .modal-btn-cancel {
+            background: #1e2433;
+            color: #e0e0f0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .modal-btn-confirm {
+            background: #2dbdf8;
+            color: #000000;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="visual-area" id="visualArea">
+        <button class="back-btn" id="btnBack" aria-label="Geri">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+        </button>
+        <canvas id="pendulumCanvas"></canvas>
+    </div>
+
+    <!-- Ana Ekran Onay Penceresi -->
+    <div class="modal-overlay" id="exitModal">
+        <div class="modal-card">
+            <h2 class="modal-title" data-i18n="modal_exit_title">Ana Ekrana Dön</h2>
+            <p class="modal-desc" data-i18n="modal_exit_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" id="btnCancelExit" data-i18n="modal_cancel">İptal</button>
+                <button class="modal-btn modal-btn-confirm" id="btnConfirmExit" data-i18n="modal_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-area">
+        <div class="header">
+            <h1 data-i18n="dp_title">Çift Sarkaç Simülasyonu</h1>
+            <p class="subtitle" data-i18n="dp_subtitle">Kaotik Yörünge ve Fizik Motoru</p>
+        </div>
+
+        <div class="control-block">
+            <div class="control-group">
+                <label>
+                    <span data-i18n="dp_lbl_angle">Başlangıç Açısı (Serbest Bırakma Yüksekliği)</span>
+                    <span id="angleVal">160°</span>
+                </label>
+                <input type="range" id="angleSlider" min="30" max="175" value="160">
+            </div>
+            
+            <div class="btn-grid">
+                <button class="action-btn btn-cyan" id="btnReset" data-i18n="dp_btn_reset">🔄 Sıfırla & Başlat</button>
+                <button class="action-btn btn-pink" id="btnClearTrail" data-i18n="dp_btn_clear">🧹 İzleri Temizle</button>
+            </div>
+        </div>
+
+        <div class="explanation-section">
+            <div class="info-card cyan">
+                <h3 data-i18n="dp_card1_title">Kamçı Etkisi (Açısal Hızlanma)</h3>
+                <p data-i18n="dp_card1_desc">Birinci kol aşağı salınırken kazandığı tüm enerjiyi eklem noktası aracılığıyla aniden ikinci kola devreder. Tıpkı bir kamcının ucunun patlaması gibi, ikinci kol bu enerji transferiyle çılgınca taklalar atmaya başlar.</p>
+            </div>
+
+            <div class="info-card pink">
+                <h3 data-i18n="dp_card2_title">Garip Çeker (Asla Kesişmeyen Yollar)</h3>
+                <p data-i18n="dp_card2_desc">Uçtaki siyan renkli topun arkasında bıraktığı bu neon iz, sonsuza kadar çalışsa bile <strong>asla kendi üzerinden birebir geçmez (kesişmez)</strong>. Eğer bir kez bile kesişseydi, sistem döngüye girer ve öngörülebilir olurdu.</p>
+            </div>
+
+            <div class="info-card green">
+                <h3 data-i18n="dp_card3_title">Deterministik Kaos</h3>
+                <p data-i18n="dp_card3_desc">Bu hareket tamamen kesin fizik kurallarına (yerçekimi ve Newton yasalarına) bağlıdır, rastgele değildir. Ancak kurallar o kadar lineer olmayan bir karmaşıklık sunar ki, geleceği uzun vadede hesaplamak imkansızdır.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('pendulumCanvas');
+        const ctx = canvas.getContext('2d');
+        const visualArea = document.getElementById('visualArea');
+        const angleSlider = document.getElementById('angleSlider');
+        const angleVal = document.getElementById('angleVal');
+
+        let width, height, cx, cy;
+        let l1, l2;
+        const g = 9.81;
+        const m1 = 10, m2 = 10;
+
+        let pendulum = {
+            t1: 0,
+            t2: 0,
+            w1: 0,
+            w2: 0,
+            trail: []
+        };
+
+        function resize() {
+            width = visualArea.clientWidth;
+            height = visualArea.clientHeight;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
+
+            cx = width / 2;
+            cy = height / 2;
+            
+            const minDim = Math.min(width, height);
+            l1 = minDim * 0.20;
+            l2 = minDim * 0.20;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        function derivatives(t1, t2, w1, w2) {
+            const d = t1 - t2;
+            
+            const num1 = -g * (2 * m1 + m2) * Math.sin(t1) - m2 * g * Math.sin(t1 - 2 * t2) - 2 * Math.sin(d) * m2 * (w2 * w2 * l2 + w1 * w1 * l1 * Math.cos(d));
+            const den1 = l1 * (2 * m1 + m2 - m2 * Math.cos(2 * d));
+            const alpha1 = num1 / den1;
+
+            const num2 = 2 * Math.sin(d) * (w1 * w1 * l1 * (m1 + m2) + g * (m1 + m2) * Math.cos(t1) + w2 * w2 * l2 * m2 * Math.cos(d));
+            const den2 = l2 * (2 * m1 + m2 - m2 * Math.cos(2 * d));
+            const alpha2 = num2 / den2;
+
+            return { dw1: alpha1, dw2: alpha2, dt1: w1, dt2: w2 };
+        }
+
+        function rk4Step(p, dt) {
+            let k1 = derivatives(p.t1, p.t2, p.w1, p.w2);
+            let k2 = derivatives(p.t1 + 0.5 * dt * k1.dt1, p.t2 + 0.5 * dt * k1.dt2, p.w1 + 0.5 * dt * k1.dw1, p.w2 + 0.5 * dt * k1.dw2);
+            let k3 = derivatives(p.t1 + 0.5 * dt * k2.dt1, p.t2 + 0.5 * dt * k2.dt2, p.w1 + 0.5 * dt * k2.dw1, p.w2 + 0.5 * dt * k2.dw2);
+            let k4 = derivatives(p.t1 + dt * k3.dt1, p.t2 + dt * k3.dt2, p.w1 + dt * k3.dw1, p.w2 + dt * k3.dw2);
+
+            p.t1 += (dt / 6) * (k1.dt1 + 2 * k2.dt1 + 2 * k3.dt1 + k4.dt1);
+            p.t2 += (dt / 6) * (k1.dt2 + 2 * k2.dt2 + 2 * k3.dt2 + k4.dt2);
+            p.w1 += (dt / 6) * (k1.dw1 + 2 * k2.dw1 + 2 * k3.dw1 + k4.dw1);
+            p.w2 += (dt / 6) * (k1.dw2 + 2 * k2.dw2 + 2 * k3.dw2 + k4.dw2);
+
+            p.w1 *= 0.99998;
+            p.w2 *= 0.99998;
+        }
+
+        function initPendulum() {
+            const deg = parseFloat(angleSlider.value);
+            angleVal.innerText = `${deg}°`;
+            
+            const rad = (deg * Math.PI) / 180;
+
+            pendulum = {
+                t1: rad,
+                t2: rad * 0.9,
+                w1: 0,
+                w2: 0,
+                trail: []
+            };
+        }
+
+        angleSlider.addEventListener('input', initPendulum);
+        document.getElementById('btnReset').addEventListener('click', initPendulum);
+        document.getElementById('btnClearTrail').addEventListener('click', () => { pendulum.trail = []; });
+
+        // Delta Time & Zaman Biriktirici (Sabit Fizik Hızı)
+        let lastTime = performance.now();
+        let accumulator = 0;
+        const FIXED_DT = 0.015;
+
+        function draw(timestamp) {
+            const currentTime = timestamp || performance.now();
+            let delta = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            if (isNaN(delta) || delta < 0) delta = 0;
+            if (delta > 0.1) delta = 0.1;
+
+            accumulator += delta * 10.8;
+
+            while (accumulator >= FIXED_DT) {
+                rk4Step(pendulum, FIXED_DT);
+                accumulator -= FIXED_DT;
+            }
+
+            pendulum.x1 = cx + l1 * Math.sin(pendulum.t1);
+            pendulum.y1 = cy + l1 * Math.cos(pendulum.t1);
+            pendulum.x2 = pendulum.x1 + l2 * Math.sin(pendulum.t2);
+            pendulum.y2 = pendulum.y1 + l2 * Math.cos(pendulum.t2);
+
+            pendulum.trail.push({ x: pendulum.x2, y: pendulum.y2 });
+            if (pendulum.trail.length > 300) pendulum.trail.shift();
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, width, height);
+
+            if (pendulum.trail.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(pendulum.trail[0].x, pendulum.trail[0].y);
+                for (let i = 1; i < pendulum.trail.length; i++) {
+                    ctx.lineTo(pendulum.trail[i].x, pendulum.trail[i].y);
+                }
+                ctx.strokeStyle = '#00e5ff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(pendulum.x1, pendulum.y1);
+            ctx.lineTo(pendulum.x2, pendulum.y2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(pendulum.x1, pendulum.y1, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(pendulum.x2, pendulum.y2, 7, 0, Math.PI * 2);
+            ctx.fillStyle = '#00e5ff';
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = '#00e5ff';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            requestAnimationFrame(draw);
+        }
+
+        // Modal Mantığı
+        const btnBack = document.getElementById('btnBack');
+        const exitModal = document.getElementById('exitModal');
+        const btnCancelExit = document.getElementById('btnCancelExit');
+        const btnConfirmExit = document.getElementById('btnConfirmExit');
+
+        btnBack.addEventListener('click', () => {
+            exitModal.classList.add('active');
+        });
+
+        btnCancelExit.addEventListener('click', () => {
+            exitModal.classList.remove('active');
+        });
+
+        btnConfirmExit.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        initPendulum();
+        requestAnimationFrame(draw);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title data-i18n="aurora_page_title">Güneş, IMF Bz & Magnetotail Aurora Simülasyonu</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000002;
+            color: #fff;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            touch-action: none;
+        }
+        #webgl-container {
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+        }
+
+        /* Geri Düğmesi (Sol Üst Ok) */
+        #back-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 101;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(15, 23, 42, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #back-btn:active {
+            transform: scale(0.92);
+            background: rgba(30, 41, 59, 0.85);
+        }
+        #back-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* Sol Ayar Paneli Butonu */
+        #panel-toggle-btn {
+            position: absolute;
+            top: 15px;
+            left: 68px;
+            z-index: 100;
+            background: rgba(10, 15, 30, 0.88);
+            border: 1px solid rgba(56, 189, 248, 0.5);
+            color: #38bdf8;
+            padding: 12px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+            transition: all 0.25s ease;
+            min-height: 44px;
+        }
+        #panel-toggle-btn:active {
+            transform: scale(0.96);
+            background: rgba(56, 189, 248, 0.3);
+        }
+
+        /* Sağ Bilgi Paneli Butonu */
+        #info-toggle-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 100;
+            background: rgba(10, 15, 30, 0.88);
+            border: 1px solid rgba(168, 85, 247, 0.5);
+            color: #c084fc;
+            padding: 12px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+            transition: all 0.25s ease;
+            min-height: 44px;
+        }
+        #info-toggle-btn:active {
+            transform: scale(0.96);
+            background: rgba(168, 85, 247, 0.3);
+        }
+
+        /* Sol Ayar Paneli */
+        #ui-panel {
+            position: absolute;
+            top: 70px;
+            left: 15px;
+            width: calc(100% - 30px);
+            max-width: 340px;
+            max-height: calc(100vh - 90px);
+            overflow-y: auto;
+            background: rgba(10, 15, 30, 0.92);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85);
+            z-index: 99;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+            transform-origin: top left;
+            -webkit-overflow-scrolling: touch;
+        }
+        #ui-panel.collapsed {
+            transform: scale(0.9) translateY(-20px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Sağ Bilgi Paneli */
+        #info-panel {
+            position: absolute;
+            top: 70px;
+            right: 15px;
+            width: calc(100% - 30px);
+            max-width: 380px;
+            max-height: calc(100vh - 90px);
+            overflow-y: auto;
+            background: rgba(10, 15, 30, 0.94);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85);
+            z-index: 99;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+            transform-origin: top right;
+            -webkit-overflow-scrolling: touch;
+        }
+        #info-panel.collapsed {
+            transform: scale(0.9) translateY(-20px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 15px;
+            color: #38bdf8;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+        .info-title {
+            font-size: 15px;
+            color: #c084fc;
+            margin-bottom: 10px;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+            padding-bottom: 6px;
+        }
+        p.desc {
+            font-size: 11px;
+            color: #94a3b8;
+            line-height: 1.35;
+            margin-bottom: 14px;
+        }
+
+        .info-content {
+            font-size: 12px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+        .info-section {
+            margin-bottom: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid #c084fc;
+        }
+        .info-section h3 {
+            font-size: 13px;
+            color: #f0abfc;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .info-section p {
+            font-size: 11.5px;
+            color: #94a3b8;
+            margin: 0;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #cbd5e1;
+            margin-bottom: 5px;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 22px;
+            background: transparent;
+            accent-color: #38bdf8;
+            cursor: pointer;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #cbd5e1;
+            min-height: 28px;
+        }
+        .checkbox-custom {
+            cursor: pointer;
+            accent-color: #38bdf8;
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Telemetri Kutusu */
+        .telemetry-box {
+            margin-top: 14px;
+            background: rgba(6, 10, 20, 0.85);
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            font-family: monospace;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .telemetry-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .telemetry-val {
+            font-weight: bold;
+        }
+
+        .btn-reset {
+            width: 100%;
+            margin-top: 14px;
+            padding: 12px;
+            background: rgba(56, 189, 248, 0.2);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: #38bdf8;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            min-height: 44px;
+            transition: background 0.2s;
+        }
+        .btn-reset:active {
+            background: rgba(56, 189, 248, 0.4);
+            color: #fff;
+        }
+
+        .legend {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* Ana Ekran Onay Modal Yapısı */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(2, 6, 18, 0.75);
+            backdrop-filter: blur(8px);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-card {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 20px;
+            padding: 24px 20px 20px 20px;
+            width: 88%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+            transform: scale(0.9);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+        .modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+        .modal-desc {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .modal-btn {
+            flex: 1;
+            padding: 12px 0;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            min-height: 44px;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .modal-btn-cancel {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+        }
+        .modal-btn-cancel:active {
+            background: rgba(51, 65, 85, 1);
+        }
+        .modal-btn-confirm {
+            background: #0ea5e9;
+            color: #ffffff;
+        }
+        .modal-btn-confirm:active {
+            background: #0284c7;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="lang.js"></script>
+</head>
+<body>
+
+    <!-- Sol Üst Geri Butonu -->
+    <button id="back-btn" aria-label="Geri">
+        <svg viewBox="0 0 24 24">
+            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+        </svg>
+    </button>
+
+    <!-- Sol Kontrol Paneli Butonu -->
+    <button id="panel-toggle-btn">
+        <span id="btn-icon">🎛️</span>
+        <span id="btn-text" data-i18n="aurora_panel_toggle_hide">Paneli Gizle</span>
+    </button>
+
+    <!-- Sağ Bilgi Paneli Butonu -->
+    <button id="info-toggle-btn">
+        <span id="info-btn-icon">📖</span>
+        <span id="info-btn-text" data-i18n="aurora_info_toggle_guide">Aurora Rehberi</span>
+    </button>
+
+    <!-- Ana Ekran Dön Onay Modalı -->
+    <div id="home-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-title" data-i18n="modal_exit_title">Ana Ekrana Dön</div>
+            <div class="modal-desc" data-i18n="modal_exit_desc">Ana ekrana dönmek istediğinize emin misiniz?</div>
+            <div class="modal-buttons">
+                <button id="modal-cancel" class="modal-btn modal-btn-cancel" data-i18n="modal_cancel">İptal</button>
+                <button id="modal-confirm" class="modal-btn modal-btn-confirm" data-i18n="modal_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sol Ayar Paneli -->
+    <div id="ui-panel">
+        <h1 data-i18n="aurora_panel_title">Güneş & IMF B<sub>z</sub> Aurora Fiziği</h1>
+        <p class="desc" data-i18n="aurora_panel_desc">3D Manyetik Reconnection & Uzay Hava Durumu Modeli.</p>
+
+        <div class="control-group">
+            <label><span data-i18n="aurora_lbl_speed">Güneş Rüzgarı Hızı (v)</span><span id="val-speed">400 km/s</span></label>
+            <input type="range" id="inp-speed" min="200" max="1000" step="10" value="400">
+        </div>
+
+        <div class="control-group">
+            <label><span data-i18n="aurora_lbl_bz">IMF B<sub>z</sub> (Kutupsallık)</span><span id="val-bz">-5 nT</span></label>
+            <input type="range" id="inp-bz" min="-30" max="15" step="1" value="-5">
+        </div>
+
+        <div class="control-group">
+            <label><span data-i18n="aurora_lbl_count">Parçacık Yoğunluğu</span><span id="val-count">600</span></label>
+            <input type="range" id="inp-count" min="100" max="1500" value="600">
+        </div>
+
+        <div class="toggle-row">
+            <span data-i18n="aurora_lbl_field">Manyetik Alan Çizgileri</span>
+            <input type="checkbox" id="inp-field" class="checkbox-custom" checked>
+        </div>
+
+        <div class="toggle-row">
+            <span data-i18n="aurora_lbl_shock">Şok Dalgası & Kuyruk</span>
+            <input type="checkbox" id="inp-shock" class="checkbox-custom" checked>
+        </div>
+
+        <!-- Canlı Telemetri Paneli -->
+        <div class="telemetry-box">
+            <div class="telemetry-row">
+                <span data-i18n="aurora_tele_reconn">Reconnection:</span>
+                <span id="tele-reconn" class="telemetry-val" style="color: #ff4444;">Açık (Güney)</span>
+            </div>
+            <div class="telemetry-row">
+                <span data-i18n="aurora_tele_power">Auroral Güç İndeksi:</span>
+                <span id="tele-power" class="telemetry-val" style="color: #00ffcc;">1.00x</span>
+            </div>
+        </div>
+
+        <button class="btn-reset" id="btn-reset-cam" data-i18n="aurora_btn_reset_cam">Kamerayı Sıfırla</button>
+
+        <div class="legend">
+            <div class="legend-item"><span class="dot" style="background: #eab308;"></span> <span data-i18n="aurora_legend_shock">Bow Shock (Şok Dalgası)</span></div>
+            <div class="legend-item"><span class="dot" style="background: #00f0ff;"></span> <span data-i18n="aurora_legend_tail">Magnetotail Plazma Kuyruğu</span></div>
+            <div class="legend-item"><span class="dot" style="background: #ff00aa;"></span> <span data-i18n="aurora_legend_storm">Şiddetli Fırtına Emisyonu (Kırmızı)</span></div>
+        </div>
+    </div>
+
+    <!-- Sağ Bilimsel Açıklama Paneli -->
+    <div id="info-panel" class="collapsed">
+        <h2 class="info-title" data-i18n="aurora_info_main_title">Aurora ve Manyetosfer Fiziği</h2>
+        <div class="info-content">
+            
+            <div class="info-section">
+                <h3 data-i18n="aurora_sec1_title">1. Güneş Rüzgarı ve IMF B<sub>z</sub> Nedir?</h3>
+                <p data-i18n="aurora_sec1_desc">Güneş, uzaya süpersonik hızlarda yüklü plazma fırlatır. Bu plazma, Güneş'in kendi manyetik alanını da uzaya doğru sürükler. Buna <b>Gezegenlerarası Manyetik Alan (IMF)</b> denir. <b>B<sub>z</sub></b> ise bu manyetik alanın Dünya'ya ulaşan kısmının Kuzey-Güney (Z ekseni) doğrultusudur.</p>
+            </div>
+
+            <div class="info-section">
+                <h3 data-i18n="aurora_sec2_title">2. Manyetik Kalkan ve Şok Dalgası (Bow Shock)</h3>
+                <p data-i18n="aurora_sec2_desc">Dünya'nın iç çekirdeği sayesinde oluşan manyetosferi, radyasyonlu güneş plazmasına karşı devasa görünmez bir kalkan görevi görür. Saniyede 400-1000 km hızla gelen güneş rüzgarı bu kalkana çarptığında aniden yavaşlar. Tıpkı ses duvarını aşan bir savaş uçağının önündeki havanın sıkışması gibi, Dünya'nın önünde sapsarı renkle simüle ettiğimiz bir <b>Şok Dalgası (Bow Shock)</b> yaratır.</p>
+            </div>
+
+            <div class="info-section">
+                <h3 data-i18n="aurora_sec3_title">3. Neden B<sub>z</sub> Negatifken Fırtına Kopar?</h3>
+                <p data-i18n="aurora_sec3_desc">Dünya'nın Güneş'e bakan tarafındaki manyetik alanı daima <b>Kuzey'e</b> doğrudur. Eğer Güneş'ten gelen B<sub>z</sub> bileşeni <b>Güney'e (negatif)</b> bakıyorsa, zıt kutuplar birbirini çeker. İki alan birbirine dokunur, kırılır ve <b>Manyetik Yeniden Bağlanma (Magnetic Reconnection)</b> dediğimiz olay gerçekleşir. Kısacası kalkanımızda bir "açık kapı" oluşur ve yüklü güneş plazması direkt olarak sistemimize sızmaya başlar.</p>
+            </div>
+
+            <div class="info-section">
+                <h3 data-i18n="aurora_sec4_title">4. Auroralar Neden Şiddetlenir?</h3>
+                <p data-i18n="aurora_sec4_desc">İçeri sızan plazma, kalkanın rüzgarda dalgalanan arka kısmına, yani <b>Manyetik Kuyruğa (Magnetotail)</b> sürüklenir. B<sub>z</sub> ne kadar negatifleşirse (örn: -15 nT), içeri o kadar çok enerji girer ve kuyrukta birikir. Sonunda bu enerji devasa bir elektromanyetik sapan gibi boşalarak (Lorentz Kuvveti) milyonlarca yüklü parçacığı Dünya'nın kutuplarına doğru muazzam hızlarda ateşler. Fırtına şiddetlendikçe atmosfere yağan elektron sayısı ve enerjisi artar, bu da auroral ovalin genişlemesine ve ışıkların gümbür gümbür parlamasına sebep olur.</p>
+            </div>
+
+            <div class="info-section" style="border-left-color: #38bdf8;">
+                <h3 data-i18n="aurora_sec5_title">💡 Atmosferik Çarpışmalar ve Renkler</h3>
+                <p data-i18n="aurora_sec5_desc">Kutuplara inanılmaz hızlarda fırlatılan bu elektronlar, atmosferimizdeki gaz moleküllerine çarparak onları foton yaymaya (eksitasyon) zorlar:<br><br>
+                • <b>Yeşil / Camgöbeği:</b> Elektronların atmosferdeki Oksijen (O) atomlarına çarpmasıyla oluşur (~100-150 km irtifa).<br><br>
+                • <b>Kırmızı / Pembe:</b> Fırtına çok şiddetli olduğunda (yüksek güneş hızı ve düşük B<sub>z</sub>), elektronlar atmosfere o kadar yoğun girer ki, hem 300+ km'deki nadir oksijenleri hem de 100 km altındaki yoğun Nitrojen (N<sub>2</sub>) moleküllerini uyarır. Simülasyonda B<sub>z</sub>'yi iyice düşürdüğünüzde beliren kırmızı alevler bu yüksek enerjili fırtınanın kanıtıdır.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="webgl-container"></div>
+
+    <script>
+        // --- 1. Sahne, Kamera & Renderer ---
+        const container = document.getElementById('webgl-container');
+        const scene = new THREE.Scene();
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(-18, 10, 45);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        
+        renderer.toneMapping = THREE.CineonToneMapping;
+        renderer.toneMappingExposure = 1.35; 
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 500;
+        controls.minDistance = 4;
+        controls.touches = {
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+        };
+
+        const clock = new THREE.Clock();
+
+        // --- 2. Işıklandırma ---
+        const ambientLight = new THREE.AmbientLight(0x0a0f1d, 0.85);
+        scene.add(ambientLight);
+
+        const sunPosition = new THREE.Vector3(-32, 0, 0);
+
+        const sunLight = new THREE.DirectionalLight(0xfff7e6, 2.2); 
+        sunLight.position.copy(sunPosition);
+        scene.add(sunLight);
+
+        // --- 3. Şaderler ---
+        const sunSurfaceShader = {
+            uniforms: { uTime: { value: 0 } },
+            vertexShader: `
+                precision highp float;
+                varying vec3 vPosition;
+                void main() {
+                    vPosition = position;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                precision highp float;
+                uniform float uTime;
+                varying vec3 vPosition;
+
+                float hash(vec3 p) {
+                    p = fract(p * vec3(443.897, 441.423, 437.195));
+                    p += dot(p, p.yzx + 19.19);
+                    return fract((p.x + p.y) * p.z);
+                }
+
+                float noise(vec3 p) {
+                    vec3 i = floor(p);
+                    vec3 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    return mix(
+                        mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x),
+                            mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+                        mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+                            mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+                }
+
+                void main() {
+                    vec3 p = vPosition * 0.8;
+                    float n1 = noise(p + vec3(uTime * 0.1, 0.0, 0.0));
+                    float n2 = noise(p * 2.0 - vec3(0.0, uTime * 0.15, 0.0));
+                    float plasma = (n1 + n2) * 0.5;
+
+                    vec3 cDark = vec3(0.85, 0.75, 0.3); 
+                    vec3 cMid = vec3(0.98, 0.95, 0.8);  
+                    vec3 cHot = vec3(1.0, 1.0, 1.0);    
+
+                    vec3 color = mix(cDark, cMid, smoothstep(0.2, 0.5, plasma));
+                    color = mix(color, cHot, smoothstep(0.5, 0.8, plasma));
+
+                    gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+                }
+            `
+        };
+
+        const sunHaloShader = {
+            vertexShader: `
+                precision highp float;
+                varying vec3 vNormal;
+                void main() {
+                    vNormal = normalize(normalMatrix * normal);
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                precision highp float;
+                varying vec3 vNormal;
+                void main() {
+                    float d = dot(vNormal, vec3(0.0, 0.0, 1.0));
+                    float intensity = smoothstep(0.0, 1.0, 1.0 - max(0.0, d));
+                    vec3 haloColor = mix(vec3(1.0, 0.15, 0.0), vec3(1.0, 0.5, 0.0), pow(d, 2.0));
+                    float alpha = pow(intensity, 3.5) * 2.0;
+                    gl_FragColor = vec4(haloColor, clamp(alpha, 0.0, 1.0));
+                }
+            `
+        };
+
+        const auroraCurtainShader = {
+            uniforms: {
+                uTime: { value: 0 },
+                uEnergy: { value: 0.5 },
+                uBz: { value: -5.0 }
+            },
+            vertexShader: `
+                precision highp float;
+                varying vec2 vUv;
+                varying vec3 vPos;
+                uniform float uTime;
+                uniform float uEnergy;
+
+                void main() {
+                    vUv = uv;
+                    vec3 pos = position;
+
+                    float angle = uv.x * 6.283185;
+                    float heightFactor = pow(uv.y, 1.2);
+                    
+                    float wave1 = sin(angle * 8.0 + uTime * 1.5) * 0.22;
+                    float wave2 = cos(angle * 14.0 - uTime * 2.2) * 0.1;
+                    float wave3 = sin(angle * 24.0 + uTime * 3.8) * 0.04;
+                    
+                    float totalWave = (wave1 + wave2 + wave3) * heightFactor * (0.6 + uEnergy * 0.8);
+                    pos += normal * totalWave;
+
+                    vPos = pos;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                }
+            `,
+            fragmentShader: `
+                precision highp float;
+                uniform float uTime;
+                uniform float uEnergy;
+                uniform float uBz;
+                varying vec2 vUv;
+                varying vec3 vPos;
+
+                float hash2D(vec2 p) {
+                    p = fract(p * vec2(127.1, 311.7));
+                    return fract(sin(dot(p, vec2(269.5, 183.3))) * 43758.5453123);
+                }
+
+                float noise2D(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    float a = hash2D(i);
+                    float b = hash2D(i + vec2(1.0, 0.0));
+                    float c = hash2D(i + vec2(0.0, 1.0));
+                    float d = hash2D(i + vec2(1.0, 1.0));
+                    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+                }
+
+                float fbm2D(vec2 p) {
+                    float val = 0.0;
+                    float amp = 0.5;
+                    for(int i = 0; i < 4; i++) {
+                        val += amp * noise2D(p);
+                        p *= 2.2;
+                        amp *= 0.5;
+                    }
+                    return val;
+                }
+
+                void main() {
+                    float u = vUv.x;
+                    float v = vUv.y;
+
+                    float rayGrid = sin(u * 85.0 + noise2D(vec2(u * 10.0, v * 3.0)) * 4.0);
+                    rayGrid = smoothstep(-0.2, 0.6, rayGrid);
+
+                    float fineStructure = fbm2D(vec2(u * 25.0 - uTime * 0.2, v * 4.0));
+                    fineStructure = pow(clamp(fineStructure * 1.3, 0.0, 1.0), 2.0);
+
+                    float intensity = rayGrid * fineStructure * 1.8;
+
+                    float bottomSharp = smoothstep(0.0, 0.03, v) * (1.0 - smoothstep(0.03, 0.12, v)) * 2.5;
+                    float curtainBody = smoothstep(0.05, 0.25, v) * smoothstep(1.0, 0.3, v);
+                    float altitudeProfile = bottomSharp + curtainBody;
+
+                    vec3 colEmerald = vec3(0.0, 1.0, 0.5);
+                    vec3 colCyan    = vec3(0.0, 0.85, 1.0);
+                    vec3 colViolet  = vec3(0.55, 0.15, 1.0);
+                    vec3 colRedStorm = vec3(1.0, 0.1, 0.45);
+
+                    vec3 color;
+                    if (v < 0.25) {
+                        color = mix(colEmerald, colCyan, v / 0.25);
+                    } else {
+                        color = mix(colCyan, colViolet, (v - 0.25) / 0.75);
+                    }
+
+                    if (uBz < -10.0) {
+                        float redFactor = smoothstep(-10.0, -30.0, uBz) * smoothstep(0.2, 0.9, v);
+                        color = mix(color, colRedStorm, redFactor * 0.85);
+                    }
+
+                    float pulse = sin(uTime * 2.5 + u * 20.0) * 0.12 + 0.88;
+                    float alpha = intensity * altitudeProfile * (0.5 + uEnergy * 0.7) * pulse;
+
+                    gl_FragColor = vec4(color * 2.2, clamp(alpha * 0.85, 0.0, 0.8));
+                }
+            `
+        };
+
+        const bowShockShader = {
+            uniforms: { uTime: { value: 0 } },
+            vertexShader: `
+                precision highp float;
+                varying vec3 vWorldPos;
+                varying vec3 vNormal;
+                varying vec2 vUv;
+                uniform float uTime;
+
+                float hash(vec3 p) {
+                    p = fract(p * vec3(443.897, 441.423, 437.195));
+                    p += dot(p, p.yzx + 19.19);
+                    return fract((p.x + p.y) * p.z);
+                }
+
+                float noise(vec3 p) {
+                    vec3 i = floor(p);
+                    vec3 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    return mix(
+                        mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x),
+                            mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+                        mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+                            mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+                }
+
+                void main() {
+                    vUv = uv;
+                    vec3 pos = position;
+
+                    float normalizedX = (pos.x + 35.0) / 70.0; 
+                    float xOffset = normalizedX * 65.0; 
+                    float noseX = -5.2; 
+                    
+                    float realX = noseX + xOffset;
+                    float radius = 5.8 * pow(xOffset + 0.05, 0.48); 
+
+                    float angle = atan(pos.z, pos.y);
+                    pos.x = realX;
+                    pos.y = cos(angle) * radius;
+                    pos.z = sin(angle) * radius;
+
+                    float n = noise(pos * 0.15 + vec3(uTime * 0.8, 0.0, 0.0));
+                    pos.y += cos(angle) * n * 0.4;
+                    pos.z += sin(angle) * n * 0.4;
+
+                    vWorldPos = (modelMatrix * vec4(pos, 1.0)).xyz;
+                    vNormal = normalize(normalMatrix * normal);
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                }
+            `,
+            fragmentShader: `
+                precision highp float;
+                uniform float uTime;
+                varying vec3 vWorldPos;
+                varying vec3 vNormal;
+                varying vec2 vUv;
+
+                float hash2D(vec2 p) {
+                    p = fract(p * vec2(123.34, 456.21));
+                    p += dot(p, p + 45.32);
+                    return fract(p.x * p.y);
+                }
+
+                float noise2D(vec2 p) {
+                    vec2 i = floor(p);
+                    vec2 f = fract(p);
+                    f = f * f * (3.0 - 2.0 * f);
+                    float a = hash2D(i);
+                    float b = hash2D(i + vec2(1.0, 0.0));
+                    float c = hash2D(i + vec2(0.0, 1.0));
+                    float d = hash2D(i + vec2(1.0, 1.0));
+                    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+                }
+
+                void main() {
+                    float streamT = clamp((vWorldPos.x + 5.2) / 60.0, 0.0, 1.0);
+
+                    float tailFade = smoothstep(1.0, 0.75, streamT);
+                    float noseFade = smoothstep(0.0, 0.015, streamT);
+
+                    float viewDot = abs(dot(vNormal, vec3(0.0, 0.0, 1.0)));
+                    float rim = pow(1.0 - viewDot, 1.6);
+
+                    float plasmaNoise = noise2D(vec2(streamT * 18.0 - uTime * 1.5, vUv.y * 10.0));
+
+                    vec3 colNose  = vec3(1.0, 0.65, 0.1);    
+                    vec3 colMid   = vec3(0.45, 0.85, 0.15);  
+                    vec3 colFlank = vec3(0.0, 0.85, 0.95);  
+                    vec3 colTail  = vec3(0.0, 0.35, 0.9);   
+
+                    vec3 color = mix(colNose, colMid, smoothstep(0.0, 0.12, streamT));
+                    color = mix(color, colFlank, smoothstep(0.12, 0.45, streamT));
+                    color = mix(color, colTail, smoothstep(0.45, 1.0, streamT));
+
+                    color += vec3(0.1, 0.25, 0.3) * plasmaNoise;
+
+                    float pulse = sin(uTime * 2.0 + vWorldPos.x * 0.3) * 0.1 + 0.9;
+                    float alpha = noseFade * tailFade * (0.25 + rim * 0.65) * pulse;
+
+                    gl_FragColor = vec4(color * 2.4, clamp(alpha, 0.0, 0.9));
+                }
+            `
+        };
+
+        const magnetotailShader = {
+            uniforms: { uTime: { value: 0 } },
+            vertexShader: `
+                varying vec2 vUv;
+                varying vec3 vPos;
+                uniform float uTime;
+                void main() {
+                    vUv = uv;
+                    vec3 pos = position;
+                    float wave = sin(pos.x * 0.18 - uTime * 1.8) * 1.2 * (pos.x / 40.0);
+                    pos.y += wave;
+                    vPos = pos;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float uTime;
+                varying vec2 vUv;
+                varying vec3 vPos;
+
+                void main() {
+                    float centerGlow = 1.0 - abs(vUv.y - 0.5) * 2.0;
+                    centerGlow = pow(clamp(centerGlow, 0.0, 1.0), 2.2);
+
+                    float xFade = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.8, vUv.x);
+
+                    vec3 cyanCore = vec3(0.0, 1.0, 1.0);     
+                    vec3 blueOuter = vec3(0.0, 0.4, 1.0);    
+
+                    vec3 col = mix(blueOuter, cyanCore, centerGlow);
+                    float alpha = centerGlow * xFade * 0.85;
+
+                    gl_FragColor = vec4(col * 2.8, alpha);
+                }
+            `
+        };
+
+        function createSunCoronaTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(128, 128, 40, 128, 128, 128);
+            grad.addColorStop(0, 'rgba(255, 120, 0, 0.35)');
+            grad.addColorStop(0.3, 'rgba(255, 40, 0, 0.15)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 256, 256);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // --- 4. NASA Dünya Kaplamaları ---
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.setCrossOrigin('anonymous');
+        const baseUrl = 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/';
+        
+        const earthMap = textureLoader.load(baseUrl + 'earth_atmos_2048.jpg');
+        const earthSpecular = textureLoader.load(baseUrl + 'earth_specular_2048.jpg');
+        const earthNormal = textureLoader.load(baseUrl + 'earth_normal_2048.jpg');
+        const earthClouds = textureLoader.load(baseUrl + 'earth_clouds_1024.png');
+
+        // --- 5. Güneş Nesneleri ---
+        const sunRadius = 4.8;
+        const sunGroup = new THREE.Group();
+        sunGroup.position.copy(sunPosition);
+        scene.add(sunGroup);
+
+        const sunGeo = new THREE.SphereGeometry(sunRadius, 64, 64);
+        const sunMat = new THREE.ShaderMaterial({
+            uniforms: sunSurfaceShader.uniforms,
+            vertexShader: sunSurfaceShader.vertexShader,
+            fragmentShader: sunSurfaceShader.fragmentShader
+        });
+        const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+        sunGroup.add(sunMesh);
+
+        const haloGeo = new THREE.SphereGeometry(sunRadius * 1.12, 48, 48);
+        const haloMat = new THREE.ShaderMaterial({
+            vertexShader: sunHaloShader.vertexShader,
+            fragmentShader: sunHaloShader.fragmentShader,
+            transparent: true,
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+        sunGroup.add(haloMesh);
+
+        const sunGlowMat = new THREE.SpriteMaterial({
+            map: createSunCoronaTexture(),
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const sunGlow = new THREE.Sprite(sunGlowMat);
+        sunGlow.scale.set(sunRadius * 3.0, sunRadius * 3.0, 1);
+        sunGroup.add(sunGlow);
+
+        // --- 6. Dünya & Atmosfer ---
+        const earthRadius = 3.5;
+        const earthGroup = new THREE.Group();
+        scene.add(earthGroup);
+
+        const earthGeo = new THREE.SphereGeometry(earthRadius, 64, 64);
+        const earthMat = new THREE.MeshPhongMaterial({
+            map: earthMap,
+            specularMap: earthSpecular,
+            normalMap: earthNormal,
+            normalScale: new THREE.Vector2(0.85, 0.85),
+            specular: new THREE.Color(0x666666),
+            shininess: 25
+        });
+        const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+        earthGroup.add(earthMesh);
+
+        const cloudGeo = new THREE.SphereGeometry(earthRadius * 1.015, 64, 64);
+        const cloudMat = new THREE.MeshStandardMaterial({
+            map: earthClouds,
+            transparent: true,
+            opacity: 0.85,
+            blending: THREE.NormalBlending
+        });
+        const cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+        earthGroup.add(cloudMesh);
+
+        const atmosphereVertexShader = `
+            precision highp float;
+            varying vec3 vNormal;
+            void main() {
+                vNormal = normalize(normalMatrix * normal);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+        const atmosphereFragmentShader = `
+            precision highp float;
+            varying vec3 vNormal;
+            void main() {
+                float d = max(0.0, 0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)));
+                float intensity = pow(d, 2.2);
+                gl_FragColor = vec4(0.25, 0.65, 1.0, 1.0) * intensity;
+            }
+        `;
+        const atmosGeo = new THREE.SphereGeometry(earthRadius * 1.12, 64, 64);
+        const atmosMat = new THREE.ShaderMaterial({
+            vertexShader: atmosphereVertexShader,
+            fragmentShader: atmosphereFragmentShader,
+            blending: THREE.AdditiveBlending,
+            side: THREE.BackSide,
+            transparent: true
+        });
+        const atmosMesh = new THREE.Mesh(atmosGeo, atmosMat);
+        earthGroup.add(atmosMesh);
+
+        // --- AURORA SİSTEMİ ---
+        function createRealisticAurora(isNorth) {
+            const auroraGroup = new THREE.Group();
+
+            const radiusTop = 2.05;
+            const radiusBottom = 1.25;
+            const height = 1.5;
+            const curtainGeo = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, 140, 48, true);
+
+            const mat = new THREE.ShaderMaterial({
+                uniforms: {
+                    uTime: { value: 0 },
+                    uEnergy: { value: 0.5 },
+                    uBz: { value: -5.0 }
+                },
+                vertexShader: auroraCurtainShader.vertexShader,
+                fragmentShader: auroraCurtainShader.fragmentShader,
+                side: THREE.DoubleSide,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            const mesh1 = new THREE.Mesh(curtainGeo, mat);
+            const mesh2 = new THREE.Mesh(curtainGeo, mat);
+            mesh2.scale.set(1.06, 1.08, 1.06);
+            mesh2.rotation.y = Math.PI * 0.4;
+
+            const mesh3 = new THREE.Mesh(curtainGeo, mat);
+            mesh3.scale.set(0.95, 0.97, 0.95);
+            mesh3.rotation.y = Math.PI * 0.8;
+
+            auroraGroup.add(mesh1);
+            auroraGroup.add(mesh2);
+            auroraGroup.add(mesh3);
+
+            const yPos = isNorth ? earthRadius * 0.78 : -earthRadius * 0.78;
+            auroraGroup.position.set(0, yPos, 0);
+
+            if (!isNorth) {
+                auroraGroup.rotation.x = Math.PI;
+            }
+
+            auroraGroup.rotation.z = isNorth ? THREE.MathUtils.degToRad(-11) : THREE.MathUtils.degToRad(11);
+
+            return { group: auroraGroup, material: mat };
+        }
+
+        const northAuroraObj = createRealisticAurora(true);
+        const southAuroraObj = createRealisticAurora(false);
+        earthGroup.add(northAuroraObj.group);
+        earthGroup.add(southAuroraObj.group);
+
+        // --- MANYETOSFER KATMANLARI ---
+        const magnetosphereGroup = new THREE.Group();
+
+        const bowShockGeo = new THREE.CylinderGeometry(1.0, 1.0, 70.0, 96, 60, true);
+        bowShockGeo.rotateZ(-Math.PI / 2);
+        
+        const bowShockMat = new THREE.ShaderMaterial({
+            uniforms: bowShockShader.uniforms,
+            vertexShader: bowShockShader.vertexShader,
+            fragmentShader: bowShockShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const bowShockMesh = new THREE.Mesh(bowShockGeo, bowShockMat);
+        magnetosphereGroup.add(bowShockMesh);
+
+        const tailGeo = new THREE.PlaneGeometry(65, 10, 120, 24);
+        tailGeo.translate(32.5, 0, 0); 
+        
+        const tailMat = new THREE.ShaderMaterial({
+            uniforms: magnetotailShader.uniforms,
+            vertexShader: magnetotailShader.vertexShader,
+            fragmentShader: magnetotailShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        const tailMesh1 = new THREE.Mesh(tailGeo, tailMat);
+        const tailMesh2 = new THREE.Mesh(tailGeo, tailMat);
+        tailMesh2.rotation.x = Math.PI / 2;
+
+        magnetosphereGroup.add(tailMesh1);
+        magnetosphereGroup.add(tailMesh2);
+
+        scene.add(magnetosphereGroup);
+
+        // --- 7. YILDIZ ALANI ---
+        function createStarSprite() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+            grad.addColorStop(0.2, 'rgba(255, 255, 255, 0.9)');
+            grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.4)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 64, 64);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const starTexture = createStarSprite();
+        const starGroup = new THREE.Group();
+
+        const bgStarCount = 12000;
+        const bgStarGeo = new THREE.BufferGeometry();
+        const bgStarPos = new Float32Array(bgStarCount * 3);
+
+        for (let i = 0; i < bgStarCount; i++) {
+            const r = 180 + Math.random() * 600;
+            const theta = Math.acos(2 * Math.random() - 1);
+            const phi = Math.random() * Math.PI * 2;
+
+            bgStarPos[i * 3]     = r * Math.sin(theta) * Math.cos(phi);
+            bgStarPos[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi);
+            bgStarPos[i * 3 + 2] = r * Math.cos(theta);
+        }
+
+        bgStarGeo.setAttribute('position', new THREE.BufferAttribute(bgStarPos, 3));
+        const bgStarMat = new THREE.PointsMaterial({
+            size: 2.2,
+            map: starTexture,
+            transparent: true,
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            sizeAttenuation: true
+        });
+        starGroup.add(new THREE.Points(bgStarGeo, bgStarMat));
+
+        scene.add(starGroup);
+
+        // --- 8. Manyetik Alan Çizgileri ---
+        const fieldLinesGroup = new THREE.Group();
+        const fieldCurves = [];
+        const numLines = 28;
+
+        for (let i = 0; i < numLines; i++) {
+            const angle = (i / numLines) * Math.PI * 2;
+            const points = [];
+            const steps = 80;
+
+            for (let j = 0; j <= steps; j++) {
+                const tVal = j / steps;
+                const theta = tVal * Math.PI;
+                let r = earthRadius * 2.2 * Math.sin(theta) ** 2;
+                
+                let x = r * Math.sin(theta) * Math.cos(angle);
+                let z = r * Math.sin(theta) * Math.sin(angle);
+                let y = r * Math.cos(theta);
+
+                if (x < 0) x *= 0.55; 
+                else x *= 6.5 + (Math.abs(y) * 0.6); 
+
+                points.push(new THREE.Vector3(x, y, z));
+            }
+
+            const curve = new THREE.CatmullRomCurve3(points);
+            fieldCurves.push(curve);
+
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(80));
+            const lineMat = new THREE.LineBasicMaterial({
+                color: 0x38bdf8,
+                transparent: true,
+                opacity: 0.38
+            });
+            fieldLinesGroup.add(new THREE.Line(lineGeo, lineMat));
+        }
+        scene.add(fieldLinesGroup);
+
+        // --- 9. HIZ İZLİ PARÇACIK SİSTEMİ ---
+        let particlesData = [];
+        let particleCount = 600;
+
+        const particleGeo = new THREE.BufferGeometry();
+        let particlePositions = new Float32Array(particleCount * 2 * 3);
+        let particleColors = new Float32Array(particleCount * 2 * 3);
+
+        const particleMat = new THREE.LineBasicMaterial({
+            vertexColors: true,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const particleSystem = new THREE.LineSegments(particleGeo, particleMat);
+        scene.add(particleSystem);
+
+        function resetParticle(p) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = Math.sqrt(Math.random()) * (sunRadius * 0.95);
+            
+            p.pos = new THREE.Vector3(
+                sunPosition.x + 2.0,
+                r * Math.cos(angle),
+                r * Math.sin(angle)
+            );
+
+            const baseSpeed = (Math.random() * 0.22 + 0.16);
+            p.vel = new THREE.Vector3(baseSpeed, (Math.random() - 0.5) * 0.07, (Math.random() - 0.5) * 0.07);
+            p.state = 'FREE';
+            p.curveIndex = 0;
+            p.curveProgress = 0;
+            p.targetPole = 'north';
+            p.justReset = true; 
+            return p;
+        }
+
+        function initParticles() {
+            particlePositions = new Float32Array(particleCount * 2 * 3);
+            particleColors = new Float32Array(particleCount * 2 * 3);
+            particlesData = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                const p = resetParticle({});
+                p.pos.x += Math.random() * 70;
+                p.justReset = true;
+                particlesData.push(p);
+            }
+
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+            particleGeo.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
+        }
+
+        const tempColor = new THREE.Color();
+        function getParticleColor(pos, state, outColor) {
+            if (state === 'TRAPPED') {
+                outColor.setRGB(0.0, 0.95, 1.0);
+                return;
+            }
+            const x = pos.x;
+            if (x < -20) {
+                const tVal = (x - (-32)) / 12;
+                outColor.r = 1.0;
+                outColor.g = THREE.MathUtils.lerp(1.0, 0.85, tVal);
+                outColor.b = THREE.MathUtils.lerp(0.85, 0.2, tVal);
+            } else if (x < -10) {
+                const tVal = (x - (-20)) / 10;
+                outColor.r = 1.0;
+                outColor.g = THREE.MathUtils.lerp(0.85, 0.45, tVal);
+                outColor.b = THREE.MathUtils.lerp(0.2, 0.05, tVal);
+            } else if (x < -4.0) {
+                const tVal = (x - (-10)) / 6;
+                outColor.r = THREE.MathUtils.lerp(1.0, 0.1, tVal);
+                outColor.g = THREE.MathUtils.lerp(0.45, 0.95, tVal);
+                outColor.b = THREE.MathUtils.lerp(0.05, 0.8, tVal);
+            } else {
+                outColor.setRGB(0.0, 0.9, 0.95);
+            }
+        }
+
+        initParticles();
+
+        // --- 10. FİZİK & TELEMETRİ HESAPLAMALARI ---
+        const inpSpeed = document.getElementById('inp-speed');
+        const inpBz = document.getElementById('inp-bz');
+        const valSpeed = document.getElementById('val-speed');
+        const valBz = document.getElementById('val-bz');
+        const teleReconn = document.getElementById('tele-reconn');
+        const telePower = document.getElementById('tele-power');
+
+        function getPhysicsParameters() {
+            const v = parseFloat(inpSpeed.value);
+            const bz = parseFloat(inpBz.value);
+
+            let reconnectionFactor = 0.1; 
+            if (bz < 0) {
+                reconnectionFactor = 1.0 + (Math.abs(bz) / 5.0);
+            }
+
+            const activityIndex = (v / 400) * reconnectionFactor;
+            const ovalScale = 1.0 + (bz < 0 ? Math.abs(bz) * 0.012 : 0);
+
+            return { v, bz, reconnectionFactor, activityIndex, ovalScale };
+        }
+
+        let northEnergy = 0.4;
+        let southEnergy = 0.4;
+
+        const TARGET_FPS = 60;
+        const TARGET_DELTA = 1 / TARGET_FPS;
+
+        // --- 11. Animasyon Döngüsü ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const rawDelta = clock.getDelta();
+            const delta = Math.min(rawDelta, 0.1); 
+            const dtScale = delta / TARGET_DELTA;
+            const elapsedTime = clock.getElapsedTime();
+
+            const physics = getPhysicsParameters();
+
+            valSpeed.innerText = physics.v + " km/s";
+            valBz.innerText = physics.bz + " nT";
+            telePower.innerText = physics.activityIndex.toFixed(2) + "x";
+
+            if (physics.bz < 0) {
+                teleReconn.innerText = t("aurora_reconn_active");
+                teleReconn.style.color = "#ff4444";
+            } else {
+                teleReconn.innerText = t("aurora_reconn_inactive");
+                teleReconn.style.color = "#44ff88";
+            }
+
+            sunSurfaceShader.uniforms.uTime.value = elapsedTime;
+            bowShockShader.uniforms.uTime.value = elapsedTime;
+            magnetotailShader.uniforms.uTime.value = elapsedTime;
+
+            northAuroraObj.group.scale.set(physics.ovalScale, 1.0, physics.ovalScale);
+            southAuroraObj.group.scale.set(physics.ovalScale, 1.0, physics.ovalScale);
+
+            northAuroraObj.material.uniforms.uTime.value = elapsedTime;
+            northAuroraObj.material.uniforms.uEnergy.value = northEnergy;
+            northAuroraObj.material.uniforms.uBz.value = physics.bz;
+
+            southAuroraObj.material.uniforms.uTime.value = elapsedTime;
+            southAuroraObj.material.uniforms.uEnergy.value = southEnergy;
+            southAuroraObj.material.uniforms.uBz.value = physics.bz;
+
+            sunMesh.rotation.y += 0.001 * dtScale;
+            earthMesh.rotation.y += 0.0012 * dtScale;
+            cloudMesh.rotation.y += 0.0016 * dtScale;
+            starGroup.rotation.y += 0.0001 * dtScale;
+
+            const speedMultiplier = (physics.v / 400.0) * dtScale;
+            const positions = particleGeo.attributes.position.array;
+            const colors = particleGeo.attributes.color.array;
+
+            const trapProbability = 0.4 + (physics.reconnectionFactor * 0.15);
+
+            for (let i = 0; i < particleCount; i++) {
+                const p = particlesData[i];
+                const idxHead = i * 6;
+                const idxTail = i * 6 + 3;
+                const prevPos = p.pos.clone();
+
+                if (p.state === 'FREE') {
+                    p.pos.addScaledVector(p.vel, speedMultiplier);
+                    const distToEarth = p.pos.distanceTo(earthGroup.position);
+
+                    if (p.pos.x > -8.5 && distToEarth < 9.5) {
+                        if (Math.abs(p.pos.y) < 6.0 && Math.abs(p.pos.z) < 6.0 && Math.random() < trapProbability) {
+                            p.state = 'TRAPPED';
+                            p.curveIndex = Math.floor(Math.random() * fieldCurves.length);
+                            p.targetPole = p.pos.y >= 0 ? 'north' : 'south';
+                            p.curveProgress = p.targetPole === 'north' ? 0.15 : 0.85;
+                            p.justReset = true;
+                        } else {
+                            p.state = 'DEFLECTED';
+                        }
+                    }
+                } 
+                else if (p.state === 'TRAPPED') {
+                    const step = 0.008 * Math.pow(speedMultiplier, 1.4) * (1.0 + physics.reconnectionFactor * 0.2); 
+                    if (p.targetPole === 'north') {
+                        p.curveProgress -= step;
+                        if (p.curveProgress <= 0) {
+                            northEnergy = Math.min(3.0, northEnergy + (0.22 * physics.activityIndex));
+                            resetParticle(p);
+                        }
+                    } else {
+                        p.curveProgress += step;
+                        if (p.curveProgress >= 1) {
+                            southEnergy = Math.min(3.0, southEnergy + (0.22 * physics.activityIndex));
+                            resetParticle(p);
+                        }
+                    }
+                    if (p.state === 'TRAPPED') {
+                        const curve = fieldCurves[p.curveIndex];
+                        p.pos.copy(curve.getPoint(Math.max(0, Math.min(1, p.curveProgress))));
+                    }
+                } 
+                else if (p.state === 'DEFLECTED') {
+                    p.pos.x += p.vel.x * speedMultiplier;
+                    p.pos.y += (p.pos.y > 0 ? 0.04 : -0.04) * speedMultiplier;
+                    p.pos.z += (p.pos.z > 0 ? 0.04 : -0.04) * speedMultiplier;
+                    if (p.pos.x > 60 || Math.abs(p.pos.y) > 30) resetParticle(p);
+                }
+
+                if (p.pos.x > 60) resetParticle(p);
+
+                let tailPos = p.justReset ? p.pos.clone() : p.pos.clone().sub(p.pos.clone().sub(prevPos).clampLength(0, 0.8).multiplyScalar(3.2));
+                p.justReset = false;
+
+                positions[idxHead]     = p.pos.x;
+                positions[idxHead + 1] = p.pos.y;
+                positions[idxHead + 2] = p.pos.z;
+                positions[idxTail]     = tailPos.x;
+                positions[idxTail + 1] = tailPos.y;
+                positions[idxTail + 2] = tailPos.z;
+
+                getParticleColor(p.pos, p.state, tempColor);
+                colors[idxHead]     = tempColor.r;
+                colors[idxHead + 1] = tempColor.g;
+                colors[idxHead + 2] = tempColor.b;
+                colors[idxTail]     = tempColor.r * 0.1;
+                colors[idxTail + 1] = tempColor.g * 0.1;
+                colors[idxTail + 2] = tempColor.b * 0.1;
+            }
+
+            particleGeo.attributes.position.needsUpdate = true;
+            particleGeo.attributes.color.needsUpdate = true;
+
+            const minAuroraEnergy = 0.1 + (physics.activityIndex * 0.2);
+            northEnergy = Math.max(minAuroraEnergy, northEnergy * Math.pow(0.96, dtScale));
+            southEnergy = Math.max(minAuroraEnergy, southEnergy * Math.pow(0.96, dtScale));
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // --- 12. UI & Modal Yönetimi ---
+        const panel = document.getElementById('ui-panel');
+        const toggleBtn = document.getElementById('panel-toggle-btn');
+        const btnIcon = document.getElementById('btn-icon');
+        const btnText = document.getElementById('btn-text');
+
+        let isCollapsed = false;
+        toggleBtn.addEventListener('click', () => {
+            isCollapsed = !isCollapsed;
+            if (isCollapsed) {
+                panel.classList.add('collapsed');
+                btnIcon.textContent = '🎛️';
+                btnText.textContent = t('aurora_panel_toggle_show');
+            } else {
+                panel.classList.remove('collapsed');
+                btnIcon.textContent = '🎛️';
+                btnText.textContent = t('aurora_panel_toggle_hide');
+            }
+        });
+
+        const infoPanel = document.getElementById('info-panel');
+        const infoToggleBtn = document.getElementById('info-toggle-btn');
+        const infoBtnIcon = document.getElementById('info-btn-icon');
+        const infoBtnText = document.getElementById('info-btn-text');
+
+        let isInfoCollapsed = true;
+        infoToggleBtn.addEventListener('click', () => {
+            isInfoCollapsed = !isInfoCollapsed;
+            if (isInfoCollapsed) {
+                infoPanel.classList.add('collapsed');
+                infoBtnIcon.textContent = '📖';
+                infoBtnText.textContent = t('aurora_info_toggle_guide');
+            } else {
+                infoPanel.classList.remove('collapsed');
+                infoBtnIcon.textContent = '✖️';
+                infoBtnText.textContent = t('aurora_info_toggle_close');
+            }
+        });
+
+        const backBtn = document.getElementById('back-btn');
+        const homeModal = document.getElementById('home-modal');
+        const modalCancel = document.getElementById('modal-cancel');
+        const modalConfirm = document.getElementById('modal-confirm');
+
+        backBtn.addEventListener('click', () => {
+            homeModal.classList.add('active');
+        });
+
+        modalCancel.addEventListener('click', () => {
+            homeModal.classList.remove('active');
+        });
+
+        modalConfirm.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        document.getElementById('inp-count').addEventListener('input', (e) => {
+            particleCount = parseInt(e.target.value);
+            document.getElementById('val-count').textContent = particleCount;
+            initParticles();
+        });
+
+        document.getElementById('inp-field').addEventListener('change', (e) => {
+            fieldLinesGroup.visible = e.target.checked;
+        });
+
+        document.getElementById('inp-shock').addEventListener('change', (e) => {
+            magnetosphereGroup.visible = e.target.checked;
+        });
+
+        document.getElementById('btn-reset-cam').addEventListener('click', () => {
+            camera.position.set(-18, 10, 45);
+            controls.target.set(0, 0, 0);
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

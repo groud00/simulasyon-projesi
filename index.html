@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Cosmos Laboratory</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script src="lang.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #020208;
+            --card-bg: rgba(10, 11, 24, 0.45);
+            --card-border: rgba(255, 255, 255, 0.12);
+            --card-border-active: rgba(168, 85, 247, 0.6);
+            --accent-purple: #a855f7;
+            --accent-cyan: #38bdf8;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --sat: env(safe-area-inset-top, 0px);
+            --sab: env(safe-area-inset-bottom, 0px);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .lang-switch {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 9999;
+            display: flex;
+            gap: 4px;
+            background: rgba(10, 14, 26, 0.85);
+            padding: 4px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+        }
+        .lang-toggle {
+            background: transparent;
+            border: 0;
+            color: #cbd5e1;
+            padding: 7px 11px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .lang-toggle:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+        .lang-options {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            display: none;
+            min-width: 92px;
+            padding: 4px;
+            background: rgba(10, 14, 26, 0.96);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+        }
+        .lang-switch.open .lang-options { display: grid; gap: 2px; }
+        .lang-btn {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            pointer-events: auto;
+        }
+        .lang-btn.active {
+            background: #a855f7;
+            color: #ffffff;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+        }
+
+        #space-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 1;
+            padding: calc(var(--sat) + 32px) 24px calc(var(--sab) + 32px) 24px;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .app-header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .app-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 18px;
+            background: rgba(18, 10, 36, 0.55);
+            border: 1px solid rgba(168, 85, 247, 0.45);
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 2.5px;
+            color: #d8b4fe;
+            text-transform: uppercase;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.3), inset 0 0 10px rgba(168, 85, 247, 0.15);
+            margin-bottom: 14px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin: 0 0 8px 0;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #ffffff 10%, #e9d5ff 45%, #c084fc 75%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 2px 12px rgba(168, 85, 247, 0.35));
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin: 0;
+            font-weight: 400;
+            line-height: 1.4;
+        }
+
+        .filter-scroll-wrapper {
+            margin-bottom: 28px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .filter-chip {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            backdrop-filter: blur(8px);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .filter-chip.active, .filter-chip:hover {
+            background: rgba(168, 85, 247, 0.25);
+            color: #ffffff;
+            border-color: rgba(168, 85, 247, 0.6);
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 16px;
+            perspective: 1000px;
+        }
+
+        .card {
+            position: relative;
+            background: var(--card-bg);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 16px;
+            text-decoration: none;
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 135px;
+            transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+            transform-style: preserve-3d;
+            overflow: hidden;
+        }
+
+        .card:hover, .card:active {
+            transform: translateY(-2px) translateZ(0);
+            border-color: var(--card-border-active);
+            background: rgba(20, 15, 38, 0.65);
+            box-shadow: 0 8px 24px rgba(168, 85, 247, 0.15);
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .card-icon-wrapper {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-icon-wrapper svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: #c084fc;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .card-tag {
+            font-size: 8.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 3px 7px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .card-title {
+            font-size: 13.5px;
+            font-weight: 600;
+            line-height: 1.35;
+            color: #f1f5f9;
+        }
+
+        .card.hidden {
+            display: none !important;
+        }
+
+        @media (max-width: 640px) {
+            .app-container {
+                padding: calc(var(--sat) + 16px) 16px calc(var(--sab) + 20px) 16px;
+            }
+            .app-header { margin-bottom: 20px; }
+            h1 { font-size: 22px; }
+            p.subtitle { font-size: 12px; }
+            .filter-scroll-wrapper {
+                justify-content: flex-start;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                margin: 0 -16px 20px -16px;
+                padding: 0 16px;
+                scrollbar-width: none;
+            }
+            .filter-scroll-wrapper::-webkit-scrollbar { display: none; }
+            .filter-chip { flex: 0 0 auto; padding: 7px 14px; font-size: 11px; }
+            .grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+            }
+            .card {
+                min-height: 126px;
+                padding: 12px;
+                border-radius: 13px;
+            }
+            .card-top { margin-bottom: 9px; }
+            .card-icon-wrapper {
+                width: 30px;
+                height: 30px;
+                border-radius: 8px;
+            }
+            .card-icon-wrapper svg {
+                width: 16px;
+                height: 16px;
+            }
+            .card-tag {
+                max-width: 82px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-size: 7px;
+                padding: 3px 5px;
+            }
+            .card-title {
+                font-size: 11px;
+                line-height: 1.3;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .app-container { padding-left: 12px; padding-right: 12px; }
+            .filter-scroll-wrapper { margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; }
+            .grid { gap: 8px; }
+            .card { min-height: 118px; padding: 10px; }
+            .card-title { font-size: 10.5px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="lang-switch" id="languageMenu">
+        <button class="lang-toggle" type="button" aria-expanded="false" onclick="toggleLanguageMenu()">LANG</button>
+        <div class="lang-options">
+            <button onclick="setLanguage('tr'); closeLanguageMenu()" class="lang-btn" data-lang="tr">TR</button>
+            <button onclick="setLanguage('en'); closeLanguageMenu()" class="lang-btn" data-lang="en">EN</button>
+            <button onclick="setLanguage('zh'); closeLanguageMenu()" class="lang-btn" data-lang="zh">中文</button>
+            <button onclick="setLanguage('es'); closeLanguageMenu()" class="lang-btn" data-lang="es">ES</button>
+            <button onclick="setLanguage('de'); closeLanguageMenu()" class="lang-btn" data-lang="de">DE</button>
+            <button onclick="setLanguage('fr'); closeLanguageMenu()" class="lang-btn" data-lang="fr">FR</button>
+            <button onclick="setLanguage('ja'); closeLanguageMenu()" class="lang-btn" data-lang="ja">日本語</button>
+        </div>
+    </div>
+
+    <canvas id="space-canvas"></canvas>
+
+    <div class="app-container">
+        <header class="app-header">
+            <div class="app-badge" data-i18n="app_badge">COSMOS LABORATORY</div>
+            <h1 data-i18n="app_title">Bilimsel Simülasyonlar</h1>
+            <p class="subtitle" data-i18n="app_subtitle">Evrensel fizik yasalarını ve kuantum sistemlerini interaktif simüle edin.</p>
+        </header>
+
+        <div class="filter-scroll-wrapper">
+            <div class="filter-chip active" data-filter="all" data-i18n="filter_all">Tüm Deneyler (20)</div>
+            <div class="filter-chip" data-filter="astro" data-i18n="filter_astro">Astrofizik & Uzay</div>
+            <div class="filter-chip" data-filter="quantum" data-i18n="filter_quantum">Kuantum & Atom</div>
+            <div class="filter-chip" data-filter="chaos" data-i18n="filter_chaos">Kaos & Mekanik</div>
+            <div class="filter-chip" data-filter="theory" data-i18n="filter_theory">Teoriler & Yaşam</div>
+        </div>
+
+        <div class="grid" id="sim-grid">
+            
+            <!-- 1. Görelilik -->
+            <a href="gorelelik.html" class="card" data-category="astro">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 3 0 0 0 0 18"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_astro">Astrofizik</span>
+                </div>
+                <div class="card-title" data-i18n="sim_relativity">Görelilik & Zaman Genleşmesi</div>
+            </a>
+
+            <!-- 2. Üç Cisim Problemi -->
+            <a href="uc_cisim_problemi.html" class="card" data-category="chaos">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><path d="M10.4 9.6 6.5 17.5"/><path d="M13.6 14.4l4.9-7.9"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_mechanics">Mekanik</span>
+                </div>
+                <div class="card-title" data-i18n="sim_three_body">Üç Cisim Problemi</div>
+            </a>
+
+            <!-- 3. Lorenz Kaos Çekeri -->
+            <a href="lorenz_cekeri.html" class="card" data-category="chaos">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><path d="M12 12c-2-2.5-6-2.5-8 0s-2 6.5 0 9 6 2.5 8 0c2 2.5 6 2.5 8 0s2-6.5 0-9-6-2.5-8 0z"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_chaos">Kaos</span>
+                </div>
+                <div class="card-title" data-i18n="sim_lorenz">Lorenz Kaos Çekeri</div>
+            </a>
+
+            <!-- 4. Çift Sarkaç Kaosu -->
+            <a href="cift_sarkac.html" class="card" data-category="chaos">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><path d="m12 3 5 9"/><path d="m17 12-4 7"/><circle cx="13" cy="19" r="2"/><circle cx="12" cy="3" r="1"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_mechanics">Mekanik</span>
+                </div>
+                <div class="card-title" data-i18n="sim_double_pendulum">Çift Sarkaç Kaosu</div>
+            </a>
+
+            <!-- 5. Galaksi Kütle Çekimi -->
+            <a href="galaksi_kutle_cekimi.html" class="card" data-category="astro">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="3" transform="rotate(-30 12 12)"/><circle cx="12" cy="12" r="2"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_astro">Astrofizik</span>
+                </div>
+                <div class="card-title" data-i18n="sim_galaxy_gravity">Galaksi Kütle Çekimi</div>
+            </a>
+
+            <!-- 6. Dalga Girişimi -->
+            <a href="dalga_girisimi.html" class="card" data-category="quantum">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><path d="M2 12c.6 0 1.2-.4 1.5-1 1.1-2.2 2.6-2.2 3.8 0 .4.7 1 1.1 1.7 1.1s1.3-.4 1.7-1.1c1.1-2.2 2.6-2.2 3.8 0 .4.7 1 1.1 1.7 1.1s1.3-.4 1.7-1.1c1.1-2.2 2.6-2.2 3.8 0 .3.6.9 1 1.5 1"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_physics">Fizik</span>
+                </div>
+                <div class="card-title" data-i18n="sim_wave_interference">Dalga Girişimi</div>
+            </a>
+
+            <!-- 7. Güneş Sistemi & Kepler -->
+            <a href="gunes_sistemi_ve_kepler.html" class="card" data-category="astro">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_astronomy">Astronomi</span>
+                </div>
+                <div class="card-title" data-i18n="sim_solar_system">Güneş Sistemi & Kepler</div>
+            </a>
+
+            <!-- 8. Atom Orbital Kuantum -->
+            <a href="atom_orbitali.html" class="card" data-category="quantum">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><ellipse cx="12" cy="12" rx="8" ry="3"/><ellipse cx="12" cy="12" rx="8" ry="3" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="8" ry="3" transform="rotate(120 12 12)"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_quantum">Kuantum</span>
+                </div>
+                <div class="card-title" data-i18n="sim_atomic_orbital">Atom Orbital Kuantum</div>
+            </a>
+
+            <!-- 9. DNA Sarmalı & Protein -->
+            <a href="dna_cift_sarmal_ve_protein_katlanmasi.html" class="card" data-category="theory">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><path d="m2 15 10 7 10-7"/><path d="m2 9 10 7 10-7"/><path d="M2 3l10 7L22 3"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_biology">Biyoloji</span>
+                </div>
+                <div class="card-title" data-i18n="sim_dna_protein">DNA Sarmalı & Protein</div>
+            </a>
+
+            <!-- 10. Monte Carlo & Bozunma -->
+            <a href="monte_carlo_ve_radyoaktif_bozunma.html" class="card" data-category="quantum">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="4"/><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/><circle cx="12" cy="12" r="1.5"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_stats">İstatistik</span>
+                </div>
+                <div class="card-title" data-i18n="sim_monte_carlo">Monte Carlo & Bozunma</div>
+            </a>
+
+            <!-- 11. Yıldız Evrimi & Süpernova -->
+            <a href="yildiz_evrimi.html" class="card" data-category="astro">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_astro">Astrofizik</span>
+                </div>
+                <div class="card-title" data-i18n="sim_stellar_evolution">Yıldız Evrimi & Süpernova</div>
+            </a>
+
+            <!-- 12. Çift Yarık Kuantum -->
+            <a href="cift_yarik_ve_kuantum_girisimi.html" class="card" data-category="quantum">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><line x1="6" y1="4" x2="6" y2="20"/><line x1="18" y1="4" x2="18" y2="20"/><circle cx="12" cy="12" r="2"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_quantum">Kuantum</span>
+                </div>
+                <div class="card-title" data-i18n="sim_double_slit">Çift Yarık Kuantum</div>
+            </a>
+
+            <!-- 13. SIR Salgın Modeli -->
+            <a href="sir_salgin_modeli.html" class="card" data-category="chaos">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/><path d="m4.93 4.93 2.12 2.12"/><path d="m16.95 16.95 2.12 2.12"/><path d="m4.93 19.07 2.12-2.12"/><path d="m16.95 7.05 2.12-2.12"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_math">Matematik</span>
+                </div>
+                <div class="card-title" data-i18n="sim_sir_model">SIR Salgın Modeli</div>
+            </a>
+
+            <!-- 14. Karadelik Schwarzschild -->
+            <a href="schwarzschild_metrigi_ile_newton_fizigi.html" class="card" data-category="astro">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 2a10 10 0 0 1 10 10" stroke-dasharray="2 2"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_relativity">Görelilik</span>
+                </div>
+                <div class="card-title" data-i18n="sim_black_hole">Karadelik Schwarzschild</div>
+            </a>
+
+            <!-- 15. Aurora (Kutup Işıkları) -->
+            <a href="aurora.html" class="card" data-category="astro">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><path d="M2 15c4-6 6 6 10 0s6 6 10 0"/><path d="M2 9c4-6 6 6 10 0s6 6 10 0"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_plasma">Plazma</span>
+                </div>
+                <div class="card-title" data-i18n="sim_aurora">Aurora (Kutup Işıkları)</div>
+            </a>
+
+            <!-- 16. İdeal Gaz Molekülleri -->
+            <a href="ideal_gaz_denklemi.html" class="card" data-category="quantum">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="3"/><circle cx="8" cy="8" r="1.5"/><circle cx="16" cy="9" r="1.5"/><circle cx="10" cy="16" r="1.5"/><circle cx="15" cy="15" r="1.5"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_thermo">Termodinamik</span>
+                </div>
+                <div class="card-title" data-i18n="sim_ideal_gas">İdeal Gaz Molekülleri</div>
+            </a>
+
+            <!-- 17. Gravitasyonel Sapan -->
+            <a href="gravitasyonel_sapan.html" class="card" data-category="astro">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M3 17c4 0 7-2 9-5s3-9 9-9"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_astro">Astrofizik</span>
+                </div>
+                <div class="card-title" data-i18n="sim_gravity_assist">Gravitasyonel Sapan</div>
+            </a>
+
+            <!-- 18. Drake Denklemi -->
+            <a href="drake_teoremi.html" class="card" data-category="theory">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-10 10c0 4.4 2.9 8.2 7 9.5V17"/><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M12 6v2"/><path d="M6 12H4"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_astrobiol">Astrobiol.</span>
+                </div>
+                <div class="card-title" data-i18n="sim_drake_equation">Drake Denklemi</div>
+            </a>
+
+            <!-- 19. SETI Gözlemevi -->
+            <a href="seti_gozlemevi.html" class="card" data-category="theory">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_astrobiol">Astrobiol.</span>
+                </div>
+                <div class="card-title" data-i18n="sim_seti_observatory">SETI Gözlemevi</div>
+            </a>
+
+            <!-- 20. Kardashev Medeniyetleri -->
+            <a href="kardashev.html" class="card" data-category="theory">
+                <div class="card-top">
+                    <div class="card-icon-wrapper">
+                        <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    </div>
+                    <span class="card-tag" data-i18n="tag_futurism">Fütürizm</span>
+                </div>
+                <div class="card-title" data-i18n="sim_kardashev">Kardashev Medeniyetleri</div>
+            </a>
+
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('space-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            initStars();
+            initNebula();
+        });
+
+        let stars = [];
+        function initStars() {
+            stars = [];
+            const pixelRatio = window.devicePixelRatio || 1;
+            const isMobile = window.matchMedia('(max-width: 640px)').matches;
+            const density = isMobile ? 1800 : 1000;
+            const count = Math.floor((width * height) / density / Math.min(pixelRatio, 2));
+            for (let i = 0; i < count; i++) {
+                let color = '#ffffff';
+                const randColor = Math.random();
+                if (randColor > 0.90) color = '#bae6fd';
+                else if (randColor > 0.80) color = '#e9d5ff';
+
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    size: Math.random() < 0.88 ? (Math.random() * 0.9 + 0.3) : (Math.random() * 1.0 + 1.2),
+                    alpha: Math.random() * 0.8 + 0.2,
+                    twinkleSpeed: (Math.random() * 0.008 + 0.002) * (Math.random() < 0.5 ? 1 : -1),
+                    color: color
+                });
+            }
+        }
+
+        let nebulaClouds = [];
+        function initNebula() {
+            nebulaClouds = [
+                { x: width * 0.2, y: height * 0.25, radius: width * 0.5, color: 'rgba(147, 51, 234, 0.25)' },
+                { x: width * 0.8, y: height * 0.7, radius: width * 0.55, color: 'rgba(56, 189, 248, 0.18)' },
+                { x: width * 0.5, y: height * 0.5, radius: width * 0.65, color: 'rgba(15, 23, 42, 0.35)' }
+            ];
+        }
+
+        let shootingStars = [];
+        function createShootingStar() {
+            if (Math.random() < 0.025 && shootingStars.length < 3) {
+                shootingStars.push({
+                    x: Math.random() * width * 0.9,
+                    y: Math.random() * height * 0.4,
+                    length: Math.random() * 80 + 50,
+                    speed: Math.random() * 8 + 6,
+                    angle: Math.PI / 4 + (Math.random() * 0.2 - 0.1),
+                    opacity: 1,
+                    decay: Math.random() * 0.015 + 0.008
+                });
+            }
+        }
+
+        initStars();
+        initNebula();
+
+        function render() {
+            ctx.fillStyle = '#020208';
+            ctx.fillRect(0, 0, width, height);
+
+            nebulaClouds.forEach(cloud => {
+                const grad = ctx.createRadialGradient(cloud.x, cloud.y, 10, cloud.x, cloud.y, cloud.radius);
+                grad.addColorStop(0, cloud.color);
+                grad.addColorStop(1, 'transparent');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, cloud.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            for (let star of stars) {
+                star.alpha += star.twinkleSpeed;
+                if (star.alpha >= 0.95 || star.alpha <= 0.15) star.twinkleSpeed = -star.twinkleSpeed;
+
+                ctx.fillStyle = star.color;
+                ctx.globalAlpha = Math.max(0, Math.min(1, star.alpha));
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            createShootingStar();
+            for (let i = shootingStars.length - 1; i >= 0; i--) {
+                let p = shootingStars[i];
+                p.x += Math.cos(p.angle) * p.speed;
+                p.y += Math.sin(p.angle) * p.speed;
+                p.opacity -= p.decay;
+
+                if (p.opacity <= 0 || p.x > width || p.y > height) {
+                    shootingStars.splice(i, 1);
+                    continue;
+                }
+
+                const tailX = p.x - Math.cos(p.angle) * p.length;
+                const tailY = p.y - Math.sin(p.angle) * p.length;
+
+                const grad = ctx.createLinearGradient(p.x, p.y, tailX, tailY);
+                grad.addColorStop(0, `rgba(255, 255, 255, ${p.opacity})`);
+                grad.addColorStop(0.3, `rgba(192, 132, 252, ${p.opacity * 0.7})`);
+                grad.addColorStop(1, 'rgba(168, 85, 247, 0)');
+
+                ctx.strokeStyle = grad;
+                ctx.lineWidth = 1.8;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(tailX, tailY);
+                ctx.stroke();
+
+                ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 1.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            requestAnimationFrame(render);
+        }
+        render();
+
+        const cards = document.querySelectorAll('.card');
+
+        const chips = document.querySelectorAll('.filter-chip');
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                const filter = chip.getAttribute('data-filter');
+                cards.forEach(card => {
+                    if (filter === 'all' || card.getAttribute('data-category') === filter) {
+                        card.classList.remove('hidden');
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                });
+            });
+        });
+
+        function toggleLanguageMenu() {
+            const menu = document.getElementById('languageMenu');
+            const toggle = menu.querySelector('.lang-toggle');
+            const isOpen = menu.classList.toggle('open');
+            toggle.setAttribute('aria-expanded', String(isOpen));
+        }
+
+        function closeLanguageMenu() {
+            const menu = document.getElementById('languageMenu');
+            const toggle = menu.querySelector('.lang-toggle');
+            menu.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('languageMenu');
+            if (!menu.contains(event.target)) closeLanguageMenu();
+        });
+    </script>
+</body>
+</html>

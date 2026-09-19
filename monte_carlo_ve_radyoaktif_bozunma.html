@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="mc_page_title">Monte Carlo Bozunma Simülasyonu - Sanal Laboratuvar</title>
+    
+    <!-- Chart.js Kütüphanesi -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; padding: 0; overflow: hidden; background: #020205; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; }
+        canvas#renderCanvas { display: block; position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; z-index: 0; }
+        
+        /* Yuvarlak Geri Dön / Ana Ekran Butonu */
+        .home-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(18, 24, 38, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .home-btn:hover {
+            background: rgba(30, 41, 59, 0.9);
+            transform: scale(1.05);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .home-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Birebir Modal Onay Penceresi */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: #111827;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 28px 24px 24px 24px;
+            width: 88%;
+            max-width: 340px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            transform: scale(0.92);
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.2px;
+        }
+
+        .modal-desc {
+            font-size: 13.5px;
+            color: #94a3b8;
+            margin: 0 0 24px 0;
+            line-height: 1.4;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn-cancel {
+            background: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .modal-btn-cancel:hover {
+            background: #334155;
+        }
+
+        .modal-btn-cancel:active {
+            transform: scale(0.96);
+        }
+
+        .modal-btn-confirm {
+            background: #22d3ee;
+            color: #0f172a;
+        }
+
+        .modal-btn-confirm:hover {
+            background: #06b6d4;
+        }
+
+        .modal-btn-confirm:active {
+            transform: scale(0.96);
+        }
+
+        /* Cam Efekti */
+        .glass-panel { background: rgba(5, 10, 20, 0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(0, 250, 255, 0.15); border-radius: 12px; box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5); }
+        
+        /* Üst UI Konteyneri */
+        #top-ui-wrapper { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 95%; max-width: 420px; display: flex; flex-direction: column; gap: 8px; z-index: 50; }
+        
+        #settings-panel { padding: 12px; }
+        #stats-panel { padding: 0; }
+        
+        /* Butonlar */
+        .btn-group { display: flex; gap: 8px; margin-bottom: 10px; }
+        .btn { flex: 1; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 10px 8px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: bold; text-align: center; transition: all 0.3s; }
+        .btn.active { background: rgba(0, 250, 255, 0.15); border-color: #00faff; box-shadow: 0 0 15px rgba(0, 250, 255, 0.2); color: #00faff; }
+        .btn:active { transform: scale(0.95); }
+        
+        select { width: 100%; padding: 8px; background: rgba(0,0,0,0.6); color: #00faff; border: 1px solid rgba(0, 250, 255, 0.4); border-radius: 6px; font-size: 14px; outline: none; font-weight: bold; cursor: pointer; margin-bottom: 5px; }
+        select option { background: #111; color: #fff; }
+        
+        .slider-container { display: flex; flex-direction: column; gap: 5px; margin-bottom: 5px; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #00faff; }
+
+        /* CANLI VERİ PANELİ */
+        .stats-title { margin: 0 0 8px 0; color: #00faff; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        
+        #stats-content-wrapper { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1); }
+        #stats-content-wrapper.closed { grid-template-rows: 0fr; }
+        .stats-inner { overflow: hidden; padding: 12px 12px 0 12px; }
+        
+        .stat-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; align-items: center; }
+        .stat-label { color: #a3a3b5; }
+        .stat-value { font-weight: bold; color: #fff; }
+        
+        .comp-box { background: rgba(0,0,0,0.4); border-radius: 6px; padding: 6px 10px; margin-top: 6px; border-left: 2px solid #00faff; }
+        .experiment-box { border-left-color: #ff9600; }
+        .ci-text { font-size: 11px; color: #ff9600; font-style: italic; margin-top: 2px; text-align: right; }
+        
+        .chart-container { width: 100%; height: 110px; margin-top: 8px; margin-bottom: 10px; position: relative; }
+
+        .handle-zone { width: 100%; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; gap: 8px; border-top: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.2); border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+        .handle-line { width: 25px; height: 3px; background: rgba(255, 255, 255, 0.4); border-radius: 3px; }
+        .handle-text { font-size: 11px; color: #f5a623; font-weight: bold; letter-spacing: 1px; }
+
+        /* ALT AKSİYON BUTONLARI */
+        #action-panel { position: absolute; bottom: 65px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; justify-content: center; width: 95%; max-width: 420px; z-index: 45; }
+
+        #toast { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(255, 0, 85, 0.9); padding: 10px 20px; border-radius: 20px; font-size: 13px; display: none; z-index: 100; font-weight: bold; text-align: center; width: 90%; max-width: 350px;}
+
+        /* KONU ANLATIMI (Menü & Açıklamalar) */
+        #edu-panel { position: fixed; bottom: 0; left: 50%; width: 100%; max-width: 500px; height: 50vh; min-height: 350px; transform: translateX(-50%) translateY(calc(100% - 44px)); transition: transform 0.4s; z-index: 90; display: flex; flex-direction: column; padding: 0 20px 20px 20px; border-bottom:none; border-bottom-left-radius:0; border-bottom-right-radius:0;}
+        #edu-panel.open { transform: translateX(-50%) translateY(0); box-shadow: 0 -10px 40px rgba(0,0,0,0.8); }
+        .edu-handle-zone { width: 100%; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; gap: 6px; }
+        .edu-handle { width: 36px; height: 4px; background: rgba(255, 255, 255, 0.3); border-radius: 4px; }
+        .edu-toggle-text { font-size: 14px; color: #38bdf8; font-weight: 600; }
+        
+        .edu-content-area { flex: 1; overflow-y: auto; margin-top: 5px; padding-right: 10px; font-size: 13.5px; line-height: 1.6; color: #d1d5db; }
+        .edu-formula { font-family: monospace; background: rgba(0,0,0,0.4); padding: 6px 10px; border-radius: 5px; display: block; text-align: center; margin: 10px 0; color: #00faff; font-size: 14px;}
+        .highlight-orange { color: #ff9600; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- Yuvarlak Ok Iconlu Ana Ekrana Dön Butonu -->
+    <button class="home-btn" id="btnHome" aria-label="Ana Ekrana Dön" data-i18n-aria-label="mc_back_aria">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+    </button>
+
+    <!-- Görseldeki Birebir Modal Onay Penceresi -->
+    <div class="modal-overlay" id="homeModal">
+        <div class="modal-card">
+            <h3 class="modal-title" data-i18n="mc_modal_title">Ana Ekrana Dön</h3>
+            <p class="modal-desc" data-i18n="mc_modal_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" id="btnModalCancel" data-i18n="mc_cancel">İptal</button>
+                <button class="modal-btn modal-btn-confirm" id="btnModalConfirm" data-i18n="mc_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">Bildirim</div>
+    <canvas id="renderCanvas"></canvas>
+
+    <div id="top-ui-wrapper">
+        <!-- AYARLAR -->
+        <div id="settings-panel" class="glass-panel">
+            <div class="btn-group">
+                <div class="btn active" onclick="setMode('ABSTRACT')" id="btn-ABSTRACT" data-i18n="mc_mode_abstract">🧪 Soyut</div>
+                <div class="btn" onclick="setMode('REAL')" id="btn-REAL" data-i18n="mc_mode_real">☢️ Gerçek İzotop</div>
+            </div>
+            
+            <div id="controls-ABSTRACT">
+                <div class="slider-container">
+                    <div style="display:flex; justify-content:space-between; font-size: 12px;">
+                        <span style="color:#a3a3b5;" data-i18n="mc_decay_constant">Bozunma Sabiti (λ):</span>
+                        <strong id="val-lambda" style="color:#00faff;">0.020</strong>
+                    </div>
+                    <input type="range" id="slider-lambda" min="0.001" max="0.100" step="0.001" value="0.020" oninput="updateAbstractLambda()">
+                </div>
+            </div>
+
+            <div id="controls-REAL" style="display: none;">
+                <select id="select-isotope" onchange="updateRealIsotope()">
+                    <option value="C-14" data-i18n="mc_isotope_c14">Karbon-14 (5730 Yıl)</option>
+                    <option value="I-131" data-i18n="mc_isotope_i131">İyot-131 (8.02 Gün)</option>
+                    <option value="Cs-137" data-i18n="mc_isotope_cs137">Sezyum-137 (30.05 Yıl)</option>
+                    <option value="Co-60" data-i18n="mc_isotope_co60">Kobalt-60 (5.27 Yıl)</option>
+                    <option value="U-238" data-i18n="mc_isotope_u238">Uranyum-238 (4.47 Milyar Yıl)</option>
+                </select>
+            </div>
+
+            <!-- ÇOKLU DENEY BUTONLARI -->
+            <div style="display: flex; gap: 5px;">
+                <button class="btn" onclick="runMultipleSimulations(10)" style="flex:1; background:rgba(255,150,0,0.15); border-color:#ff9600; color:#ff9600; padding:6px; font-size:12px;">🧬 10x</button>
+                <button class="btn" onclick="runMultipleSimulations(100)" style="flex:1; background:rgba(255,150,0,0.15); border-color:#ff9600; color:#ff9600; padding:6px; font-size:12px;">🧬 100x</button>
+                <button class="btn" onclick="runMultipleSimulations(1000)" style="flex:1; background:rgba(255,150,0,0.15); border-color:#ff9600; color:#ff9600; padding:6px; font-size:12px;">🧬 1000x</button>
+            </div>
+            <div style="text-align: center; font-size: 11px; color: #ff9600; margin-top: 4px; font-weight: bold;" data-i18n="mc_analysis">İstatistiksel Analiz & Güven Aralığı</div>
+        </div>
+
+        <!-- İSTATİSTİK & GRAFİK -->
+        <div id="stats-panel" class="glass-panel">
+            <div id="stats-content-wrapper">
+                <div class="stats-inner">
+                    <h3 class="stats-title" data-i18n="mc_stats_title">CANLI VERİ & ANALİZ</h3>
+                    <div id="stats-content"></div>
+                    <div class="chart-container">
+                        <canvas id="decayChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="handle-zone" onclick="toggleStatsPanel()">
+                <div class="handle-line"></div>
+                <span class="handle-text" id="stats-toggle-text" data-i18n="mc_stats_hide">🔼 PANELİ GİZLE</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- AKSİYON BUTONLARI -->
+    <div id="action-panel">
+        <button id="btn-start" class="btn" onclick="startSimulation()" data-i18n="mc_start" style="background:rgba(0,250,100,0.15); border-color:#00fa64; color:#00fa64;">🚀 BAŞLAT</button>
+        <button id="btn-pause" class="btn" onclick="pauseSimulation()" data-i18n="mc_pause" style="background:rgba(255,255,255,0.1); border-color:#fff; color:#fff; display:none;">⏸️ DURAKLAT</button>
+        <button id="btn-reset" class="btn" onclick="resetSimulation()" data-i18n="mc_reset" style="background:rgba(255,0,85,0.15); border-color:#ff0055; color:#ff0055;">🔄 SIFIRLA</button>
+    </div>
+
+    <!-- KONU ANLATIMI & AÇIKLAMALAR -->
+    <div id="edu-panel" class="glass-panel">
+        <div class="edu-handle-zone" onclick="toggleEduPanel()">
+            <div class="edu-handle"></div>
+            <span class="edu-toggle-text" id="edu-toggle-text" data-i18n="mc_edu_toggle">Menü & Açıklamalar</span>
+        </div>
+        <div class="edu-content-area" id="edu-content"></div>
+    </div>
+
+    <!-- Script Yüklemeleri -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <script src="lang.js"></script>
+
+    <script>
+        // --- ANA EKRANA DÖN & MODAL MANTIĞI ---
+        const btnHome = document.getElementById('btnHome');
+        const homeModal = document.getElementById('homeModal');
+        const btnModalCancel = document.getElementById('btnModalCancel');
+        const btnModalConfirm = document.getElementById('btnModalConfirm');
+
+        btnHome.addEventListener('click', () => {
+            homeModal.classList.add('active');
+        });
+
+        btnModalCancel.addEventListener('click', () => {
+            homeModal.classList.remove('active');
+        });
+
+        homeModal.addEventListener('click', (e) => {
+            if (e.target === homeModal) {
+                homeModal.classList.remove('active');
+            }
+        });
+
+        btnModalConfirm.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        // --- TEMEL DEĞİŞKENLER ---
+        const TOTAL_PARTICLES = 1000;
+        let particlesArray = [];
+        let simulationTimer = null;
+        let isRunning = false;
+        
+        let stats = { active: TOTAL_PARTICLES, decayed: 0, stepCount: 0, elapsedTimeBase: 0 };
+        let decayChart;
+        
+        // Ölçüm Değişkenleri
+        let measuredHalfLife = null; 
+        let multiStats = null; // { mean, stdDev, ci95, runs }
+
+        const realIsotopes = {
+            'C-14': { nameKey: 'mc_isotope_c14', halfLife: 5730, unit: 'Yıl', colorActive: 0x00faff, colorDecayed: 0xff0055 },
+            'I-131': { nameKey: 'mc_isotope_i131', halfLife: 8.02, unit: 'Gün', colorActive: 0x00ffaa, colorDecayed: 0xffaa00 },
+            'Cs-137': { nameKey: 'mc_isotope_cs137', halfLife: 30.05, unit: 'Yıl', colorActive: 0xffff00, colorDecayed: 0xff5500 },
+            'Co-60': { nameKey: 'mc_isotope_co60', halfLife: 5.27, unit: 'Yıl', colorActive: 0x0055ff, colorDecayed: 0x555555 },
+            'U-238': { nameKey: 'mc_isotope_u238', halfLife: 4.47e9, unit: 'Yıl', colorActive: 0x8800ff, colorDecayed: 0x222222 }
+        };
+
+        function mcText(key, values = {}) {
+            return Object.entries(values).reduce((text, [name, value]) => text.replaceAll(`{${name}}`, value), t(key));
+        }
+
+        const eduData = () => t('mc_edu_html');
+
+        let currentMode = 'ABSTRACT';
+        let abstractLambda = 0.020;
+        let selectedIsotopeKey = 'C-14';
+
+        let scene, camera, renderer, sceneGroup, particleGroup, bgParticles;
+        let targetCameraZ = 120;
+        let matActive, matDecayed;
+
+        // Delta Time Takip Değişkeni
+        let lastTime = performance.now();
+
+        function initApp() {
+            init3D();
+            initChart();
+            document.getElementById('edu-content').innerHTML = eduData();
+            setMode('ABSTRACT');
+        }
+
+        window.onLanguageChange = function() {
+            document.getElementById('edu-content').innerHTML = eduData();
+            if (decayChart) {
+                decayChart.data.datasets[0].label = t('mc_chart_theory');
+                decayChart.data.datasets[1].label = t('mc_chart_mc');
+                if (decayChart.data.datasets[2]) {
+                    const runs = decayChart.data.datasets[2].label.match(/\d+/)?.[0] || '0';
+                    decayChart.data.datasets[2].label = mcText('mc_chart_average', { runs });
+                }
+                decayChart.update();
+            }
+            updateStatsUI();
+        };
+
+        function initChart() {
+            Chart.defaults.color = '#a3a3b5';
+            Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+            const ctx = document.getElementById('decayChart').getContext('2d');
+            decayChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['0'],
+                    datasets: [
+                        { label: t('mc_chart_theory'), borderColor: 'rgba(255, 255, 255, 0.7)', borderDash: [4, 4], borderWidth: 1.5, pointRadius: 0, data: [TOTAL_PARTICLES], tension: 0.4 },
+                        { label: t('mc_chart_mc'), borderColor: '#00faff', backgroundColor: '#00faff', borderWidth: 2, showLine: false, pointRadius: 2.5, data: [TOTAL_PARTICLES] }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, animation: false,
+                    plugins: { legend: { display: true, labels: { color: '#fff', boxWidth: 10, font: {size: 10}, padding: 5 } } },
+                    scales: { x: { display: false }, y: { grid: { color: 'rgba(255,255,255,0.1)' }, suggestedMin: 0, suggestedMax: TOTAL_PARTICLES, ticks: { font: {size: 10} } } },
+                    layout: { padding: 0 }
+                }
+            });
+        }
+
+        function getCurrentParams() {
+            if(currentMode === 'ABSTRACT') return { name: t('mc_mode_abstract'), lambda: abstractLambda, deltaT: 1, unit: t('mc_unit_abstract') };
+            const iso = realIsotopes[selectedIsotopeKey];
+            const unitKey = iso.unit === 'Gün' ? 'mc_unit_day' : 'mc_unit_year';
+            return { name: t(iso.nameKey), lambda: Math.LN2 / iso.halfLife, deltaT: iso.halfLife / 60, unit: t(unitKey) };
+        }
+
+        function formatNumber(num) {
+            if(num >= 1e9) return (num / 1e9).toFixed(2) + " Milyar";
+            if(num >= 1e6) return (num / 1e6).toFixed(2) + " Milyon";
+            if(num >= 1e4) return num.toLocaleString('tr-TR', {maximumFractionDigits: 0});
+            if(num < 0.01 && num > 0) return num.toExponential(2);
+            return num.toLocaleString(currentLang === 'en' ? 'en-US' : 'tr-TR', {maximumFractionDigits: 2});
+        }
+
+        function updateStatsUI() {
+            const params = getCurrentParams();
+            const p = 1 - Math.exp(-params.lambda * params.deltaT);
+            const theoreticalN = TOTAL_PARTICLES * Math.exp(-params.lambda * stats.elapsedTimeBase);
+            const mcN = stats.active;
+            const errorPercent = (Math.abs(theoreticalN - mcN) / Math.max(theoreticalN, 1)) * 100;
+            const errColor = errorPercent > 5 ? '#ff0055' : (errorPercent > 2 ? '#ff9600' : '#00fa64');
+
+            const theoHalfLife = Math.LN2 / params.lambda;
+            let halfLifeHtml = '';
+
+            if (multiStats) {
+                let hlError = (Math.abs(multiStats.mean - theoHalfLife) / theoHalfLife) * 100;
+                let hlErrColor = hlError > 5 ? '#ff0055' : (hlError > 1 ? '#ff9600' : '#00fa64');
+                
+                halfLifeHtml = `
+                    <div class="stat-row"><span class="stat-label">${t('mc_theoretical_half_life')}</span><span class="stat-value">${formatNumber(theoHalfLife)} ${params.unit}</span></div>
+                    <div class="stat-row"><span class="stat-label">${mcText('mc_average_measurement', { runs: multiStats.runs })}</span><span class="stat-value" style="color:#00faff">${formatNumber(multiStats.mean)} ${params.unit}</span></div>
+                    <div class="stat-row"><span class="stat-label">${t('mc_standard_deviation')}</span><span class="stat-value">±${formatNumber(multiStats.stdDev)}</span></div>
+                    <div class="ci-text">${t('mc_confidence_interval')} ±${formatNumber(multiStats.ci95)}</div>
+                    <div class="stat-row" style="margin-top:4px;"><span class="stat-label">${t('mc_average_error')}</span><span class="stat-value" style="color:${hlErrColor}">%${hlError.toFixed(3)}</span></div>
+                `;
+            } else if (measuredHalfLife === null) {
+                halfLifeHtml = `
+                    <div class="stat-row"><span class="stat-label">${t('mc_theoretical_half_life')}</span><span class="stat-value">${formatNumber(theoHalfLife)} ${params.unit}</span></div>
+                    <div class="stat-row"><span class="stat-label">${t('mc_measurement')}</span><span class="stat-value" style="color:#a3a3b5; font-size:11px;">${t('mc_waiting')}</span></div>
+                `;
+            } else {
+                let hlError = (Math.abs(measuredHalfLife - theoHalfLife) / theoHalfLife) * 100;
+                let hlErrColor = hlError > 5 ? '#ff0055' : (hlError > 2 ? '#ff9600' : '#00fa64');
+                halfLifeHtml = `
+                    <div class="stat-row"><span class="stat-label">${t('mc_theoretical_half_life')}</span><span class="stat-value">${formatNumber(theoHalfLife)} ${params.unit}</span></div>
+                    <div class="stat-row"><span class="stat-label">${t('mc_measurement')}</span><span class="stat-value" style="color:#00faff">${formatNumber(measuredHalfLife)} ${params.unit}</span></div>
+                    <div class="stat-row"><span class="stat-label">${t('mc_average_error')}</span><span class="stat-value" style="color:${hlErrColor}">%${hlError.toFixed(2)}</span></div>
+                `;
+            }
+
+            let html = `
+                <div style="display:flex; justify-content:space-between;">
+                    <div style="flex:1;">
+                        <div class="stat-row"><span class="stat-label">${t('mc_time')}</span><span class="stat-value">${formatNumber(stats.elapsedTimeBase)}</span></div>
+                    </div>
+                    <div style="flex:1; text-align:right;">
+                        <div class="stat-row" style="justify-content:flex-end;"><span class="stat-label" style="margin-right:8px;">${t('mc_active')}</span><span class="stat-value" style="color:#00faff">${stats.active}</span></div>
+                    </div>
+                </div>
+                
+                <div class="comp-box">
+                    <div class="stat-row"><span class="stat-label">${t('mc_theoretical_n')}</span><span class="stat-value">${theoreticalN.toFixed(1)}</span></div>
+                    <div class="stat-row"><span class="stat-label">${t('mc_monte_carlo')}</span><span class="stat-value">${mcN}</span></div>
+                    <div class="stat-row"><span class="stat-label">${t('mc_mass_error')}</span><span class="stat-value" style="color:${errColor}">%${errorPercent.toFixed(2)}</span></div>
+                </div>
+
+                <div class="comp-box experiment-box">
+                    <div style="font-size:10px; color:#ff9600; margin-bottom:4px; font-weight:bold;">${t('mc_experiment_result')}</div>
+                    ${halfLifeHtml}
+                </div>
+            `;
+            document.getElementById('stats-content').innerHTML = html;
+        }
+
+        // --- İSTATİSTİKSEL ÇOKLU SİMÜLASYON ---
+        window.runMultipleSimulations = function(runs) {
+            pauseSimulation();
+            const params = getCurrentParams();
+            const p = 1 - Math.exp(-params.lambda * params.deltaT);
+            const maxSteps = Math.ceil((Math.LN2 / params.lambda) * 5 / params.deltaT);
+            
+            let avgData = new Array(maxSteps).fill(0);
+            let theoData = new Array(maxSteps).fill(0);
+            let labels = new Array(maxSteps).fill('');
+            let individualHalfLives = [];
+
+            for(let r = 0; r < runs; r++) {
+                let currentN = TOTAL_PARTICLES;
+                let runHalfLife = null;
+
+                for(let s = 0; s < maxSteps; s++) {
+                    let decayedThisStep = 0;
+                    for(let i = 0; i < currentN; i++) {
+                        if(Math.random() < p) decayedThisStep++;
+                    }
+                    
+                    let prevN = currentN;
+                    currentN -= decayedThisStep;
+                    avgData[s] += currentN;
+
+                    if (runHalfLife === null && currentN <= TOTAL_PARTICLES / 2) {
+                        let prevT = s > 0 ? (s - 1) * params.deltaT : 0;
+                        if (prevN > TOTAL_PARTICLES / 2) {
+                            let fraction = (prevN - TOTAL_PARTICLES / 2) / (prevN - currentN);
+                            runHalfLife = prevT + fraction * params.deltaT;
+                        } else {
+                            runHalfLife = s * params.deltaT;
+                        }
+                    }
+                }
+                
+                if (runHalfLife !== null) {
+                    individualHalfLives.push(runHalfLife);
+                }
+            }
+
+            if (individualHalfLives.length > 0) {
+                let sum = 0;
+                individualHalfLives.forEach(hl => sum += hl);
+                let meanHL = sum / individualHalfLives.length;
+
+                let sumSqDiff = 0;
+                individualHalfLives.forEach(hl => sumSqDiff += Math.pow(hl - meanHL, 2));
+                let stdDev = Math.sqrt(sumSqDiff / (individualHalfLives.length > 1 ? individualHalfLives.length - 1 : 1));
+
+                let standardError = stdDev / Math.sqrt(individualHalfLives.length);
+                let ci95 = 1.96 * standardError;
+
+                multiStats = {
+                    mean: meanHL,
+                    stdDev: stdDev,
+                    ci95: ci95,
+                    runs: individualHalfLives.length
+                };
+            }
+            
+            measuredHalfLife = null; 
+
+            for(let s = 0; s < maxSteps; s++) {
+                avgData[s] = avgData[s] / runs;
+                let t = (s + 1) * params.deltaT;
+                theoData[s] = TOTAL_PARTICLES * Math.exp(-params.lambda * t);
+                labels[s] = formatNumber(t);
+            }
+
+            decayChart.data.labels = labels;
+            decayChart.data.datasets[0].data = theoData;
+            decayChart.data.datasets[1].data = []; 
+            if(decayChart.data.datasets.length === 2) {
+                decayChart.data.datasets.push({ label: mcText('mc_chart_average', { runs }), borderColor: '#ff9600', borderWidth: 2, pointRadius: 0, tension: 0.2, data: avgData });
+            } else {
+                decayChart.data.datasets[2].label = mcText('mc_chart_average', { runs });
+                decayChart.data.datasets[2].data = avgData;
+            }
+            decayChart.update();
+
+            updateStatsUI();
+            
+            const wrapper = document.getElementById('stats-content-wrapper');
+            if(wrapper.classList.contains('closed')) toggleStatsPanel();
+
+            showToast(mcText('mc_toast_completed', { runs }));
+        }
+
+        function monteCarloStep() {
+            if(!isRunning || stats.active === 0) {
+                if(stats.active === 0) { pauseSimulation(); showToast(t('mc_toast_all_decayed')); }
+                return;
+            }
+
+            const params = getCurrentParams();
+            const p = 1 - Math.exp(-params.lambda * params.deltaT);
+            
+            stats.stepCount++;
+            let prevTime = stats.elapsedTimeBase;
+            stats.elapsedTimeBase += params.deltaT;
+            let decayThisTick = 0;
+            let prevActive = stats.active;
+
+            particlesArray.forEach(particle => {
+                if(!particle.userData.isDecayed && Math.random() < p) {
+                    particle.userData.isDecayed = true;
+                    decayThisTick++;
+                    particle.material = matDecayed;
+                    new TWEEN.Tween(particle.scale)
+                        .to({x: 2.5, y: 2.5, z: 2.5}, 150)
+                        .easing(TWEEN.Easing.Quadratic.Out)
+                        .yoyo(true).repeat(1).start();
+                }
+            });
+
+            stats.active -= decayThisTick;
+            stats.decayed += decayThisTick;
+            
+            if (measuredHalfLife === null && stats.active <= TOTAL_PARTICLES / 2) {
+                if (prevActive > TOTAL_PARTICLES / 2 && decayThisTick > 0) {
+                    let fraction = (prevActive - TOTAL_PARTICLES / 2) / decayThisTick;
+                    measuredHalfLife = prevTime + fraction * params.deltaT;
+                } else {
+                    measuredHalfLife = stats.elapsedTimeBase;
+                }
+                showToast(t('mc_toast_half_life'));
+            }
+
+            updateStatsUI();
+            
+            if(decayChart.data.datasets.length === 3) decayChart.data.datasets.pop(); 
+            decayChart.data.labels.push(formatNumber(stats.elapsedTimeBase));
+            decayChart.data.datasets[0].data.push(TOTAL_PARTICLES * Math.exp(-params.lambda * stats.elapsedTimeBase));
+            decayChart.data.datasets[1].data.push(stats.active);
+            decayChart.update();
+
+            simulationTimer = setTimeout(monteCarloStep, 250); 
+        }
+
+        window.setMode = function(mode) {
+            pauseSimulation(); currentMode = mode;
+            document.getElementById('btn-ABSTRACT').classList.remove('active');
+            document.getElementById('btn-REAL').classList.remove('active');
+            document.getElementById('btn-' + mode).classList.add('active');
+            document.getElementById('controls-ABSTRACT').style.display = mode === 'ABSTRACT' ? 'block' : 'none';
+            document.getElementById('controls-REAL').style.display = mode === 'REAL' ? 'block' : 'none';
+            resetSimulation();
+        };
+
+        window.updateAbstractLambda = function() {
+            abstractLambda = parseFloat(document.getElementById('slider-lambda').value);
+            document.getElementById('val-lambda').innerText = abstractLambda.toFixed(3);
+            if(!isRunning) resetSimulation();
+        }
+
+        window.updateRealIsotope = function() {
+            selectedIsotopeKey = document.getElementById('select-isotope').value;
+            resetSimulation();
+        }
+
+        window.toggleStatsPanel = function() {
+            const wrapper = document.getElementById('stats-content-wrapper');
+            const toggleText = document.getElementById('stats-toggle-text');
+            wrapper.classList.toggle('closed');
+            toggleText.innerText = wrapper.classList.contains('closed') ? t('mc_stats_show') : t('mc_stats_hide');
+        }
+
+        window.toggleEduPanel = function() {
+            const panel = document.getElementById('edu-panel');
+            const toggleText = document.getElementById('edu-toggle-text');
+            panel.classList.toggle('open');
+            toggleText.innerText = t('mc_edu_toggle');
+        }
+
+        window.startSimulation = function() {
+            if(stats.active === 0) resetSimulation(); 
+            isRunning = true;
+            document.getElementById('btn-start').style.display = 'none';
+            document.getElementById('btn-pause').style.display = 'block';
+            clearTimeout(simulationTimer);
+            monteCarloStep();
+        };
+
+        window.pauseSimulation = function() {
+            isRunning = false;
+            clearTimeout(simulationTimer);
+            document.getElementById('btn-start').style.display = 'block';
+            document.getElementById('btn-pause').style.display = 'none';
+        };
+
+        window.resetSimulation = function() { 
+            pauseSimulation(); 
+            measuredHalfLife = null; 
+            multiStats = null;
+            buildParticles(); 
+            
+            decayChart.data.labels = ['0'];
+            decayChart.data.datasets[0].data = [TOTAL_PARTICLES];
+            decayChart.data.datasets[1].data = [TOTAL_PARTICLES];
+            if(decayChart.data.datasets.length === 3) decayChart.data.datasets.pop();
+            decayChart.update();
+            
+            updateStatsUI();
+        };
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerHTML = msg; t.style.display = 'block';
+            setTimeout(() => { t.style.display = 'none'; }, 4000);
+        }
+
+        // --- THREE.JS MOTORU ---
+        function init3D() {
+            const canvas = document.getElementById('renderCanvas');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.z = targetCameraZ;
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setClearColor(0x020205, 1);
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const light1 = new THREE.DirectionalLight(0xffffff, 0.8);
+            light1.position.set(10, 20, 20);
+            scene.add(light1);
+
+            sceneGroup = new THREE.Group(); scene.add(sceneGroup);
+            particleGroup = new THREE.Group(); bgParticles = new THREE.Group();
+            sceneGroup.add(particleGroup, bgParticles);
+
+            const geo = new THREE.SphereGeometry(45, 32, 32);
+            const mat = new THREE.MeshPhysicalMaterial({ color: 0x111122, transparent: true, opacity: 0.1, roughness: 0.1, transmission: 0.9, side: THREE.DoubleSide });
+            sceneGroup.add(new THREE.Mesh(geo, mat));
+
+            const bgGeo = new THREE.SphereGeometry(0.2, 8, 8);
+            const bgMat = new THREE.MeshBasicMaterial({ color: 0x444455, transparent: true, opacity: 0.3 }); 
+            for(let i=0; i<150; i++) {
+                const mesh = new THREE.Mesh(bgGeo, bgMat);
+                mesh.position.set((Math.random()-0.5)*200, (Math.random()-0.5)*200, (Math.random()-0.5)*200);
+                mesh.userData = { speed: Math.random() * 0.05 + 0.01, dir: new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize() };
+                bgParticles.add(mesh);
+            }
+
+            setupTouchControls();
+            buildParticles();
+            animate();
+        }
+
+        function buildParticles() {
+            while(particleGroup.children.length > 0){ particleGroup.remove(particleGroup.children[0]); }
+            particlesArray = [];
+            stats.active = TOTAL_PARTICLES; stats.decayed = 0; stats.stepCount = 0; stats.elapsedTimeBase = 0;
+
+            let cActive, cDecayed;
+            if(currentMode === 'ABSTRACT') {
+                cActive = 0x00faff; cDecayed = 0xff0055;
+            } else {
+                const iso = realIsotopes[selectedIsotopeKey];
+                cActive = iso.colorActive; cDecayed = iso.colorDecayed;
+            }
+
+            matActive = new THREE.MeshLambertMaterial({ color: cActive, emissive: 0x111111 });
+            matDecayed = new THREE.MeshLambertMaterial({ color: cDecayed, emissive: cDecayed, emissiveIntensity: 0.5 });
+
+            const geo = new THREE.SphereGeometry(1.2, 12, 12);
+            for(let i=0; i<TOTAL_PARTICLES; i++) {
+                const mesh = new THREE.Mesh(geo, matActive);
+                const r = 40 * Math.cbrt(Math.random()); 
+                const theta = Math.random() * 2 * Math.PI;
+                const phi = Math.acos(2 * Math.random() - 1);
+                
+                mesh.position.set(r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi));
+                mesh.userData = { isDecayed: false, phase: Math.random() * Math.PI * 2, speed: 0.05 + Math.random() * 0.05, originalPos: mesh.position.clone() };
+                
+                particleGroup.add(mesh);
+                particlesArray.push(mesh);
+            }
+        }
+
+        function setupTouchControls() {
+            let isDown = false; let lastX=0, lastY=0;
+            const activeTouches = new Map();
+            let initialPinchDistance = 0;
+
+            window.addEventListener('wheel', (e) => {
+                if(e.target.closest('.glass-panel')) return;
+                targetCameraZ = Math.max(20, Math.min(300, targetCameraZ * (e.deltaY > 0 ? 1.15 : 0.85)));
+            }, { passive: true });
+
+            window.addEventListener('pointerdown', (e) => {
+                if(e.target.closest('.glass-panel')) return;
+                activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (activeTouches.size === 2) {
+                    const t = Array.from(activeTouches.values());
+                    initialPinchDistance = Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y);
+                } else if (activeTouches.size === 1) {
+                    isDown = true; lastX = e.clientX; lastY = e.clientY;
+                }
+            });
+
+            window.addEventListener('pointermove', (e) => {
+                if (activeTouches.has(e.pointerId)) activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                if (activeTouches.size === 2) {
+                    const t = Array.from(activeTouches.values());
+                    const dist = Math.hypot(t[0].x - t[1].x, t[0].y - t[1].y);
+                    targetCameraZ = Math.max(20, Math.min(300, targetCameraZ * Math.exp((initialPinchDistance - dist) * 0.006)));
+                    initialPinchDistance = dist;
+                } else if (isDown && activeTouches.size === 1) {
+                    sceneGroup.rotation.y += (e.clientX - lastX) * 0.005; 
+                    sceneGroup.rotation.x += (e.clientY - lastY) * 0.005;
+                    lastX = e.clientX; lastY = e.clientY;
+                }
+            });
+
+            const removePointer = (e) => { activeTouches.delete(e.pointerId); if(activeTouches.size < 1) isDown = false; };
+            window.addEventListener('pointerup', removePointer);
+            window.addEventListener('pointercancel', removePointer);
+        }
+
+        // --- ANIMATION LOOP ---
+        function animate(currentTime) {
+            if (!currentTime) currentTime = performance.now();
+            let deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            if (deltaTime > 0.1) deltaTime = 0.1;
+            const dtFactor = deltaTime * 60;
+
+            requestAnimationFrame(animate);
+            TWEEN.update();
+
+            camera.position.z += (targetCameraZ - camera.position.z) * (1 - Math.pow(1 - 0.12, dtFactor));
+
+            bgParticles.children.forEach(p => {
+                p.position.add(p.userData.dir.clone().multiplyScalar(p.userData.speed * dtFactor));
+                if(p.position.length() > 100) p.position.multiplyScalar(-0.9);
+            });
+
+            sceneGroup.rotation.y += 0.001 * dtFactor; 
+            sceneGroup.rotation.z += 0.0005 * dtFactor;
+
+            const time = Date.now();
+            particlesArray.forEach(p => {
+                if(!p.userData.isDecayed) {
+                    const offset = Math.sin(time * 0.005 * p.userData.speed + p.userData.phase) * 0.5;
+                    p.position.x = p.userData.originalPos.x + offset; 
+                    p.position.y = p.userData.originalPos.y + offset;
+                }
+            });
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        initApp();
+    </script>
+</body>
+</html>

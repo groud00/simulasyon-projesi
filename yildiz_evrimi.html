@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="se_page_title">Gelişmiş Yıldız Evrimi: Nötron Yıldızı ve Kara Delik</title>
+    <script src="lang.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #010103; --card-bg: rgba(12, 16, 28, 0.85); --backdrop: blur(25px);
+            --accent-gold: #ffd700; --accent-blue: #00f2fe; --accent-red: #ff3366;
+            --accent-green: #00ff88; --accent-purple: #b026ff; --text-main: #f8fafc; --text-muted: #94a3b8;
+        }
+
+        html, body { margin: 0; padding: 0; width: 100%; max-width: 100%; height: 100%; background-color: var(--bg-color); font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text-main); overflow: hidden; overflow-x: hidden; user-select: none; touch-action: none; }
+        *, *::before, *::after { box-sizing: border-box; }
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 0; }
+        canvas { display: block; width: 100%; height: 100%; outline: none; }
+
+        /* Yuvarlak Geri/Menü Butonu */
+        #btn-back {
+            position: fixed; top: 20px; left: 20px; z-index: 101;
+            width: 44px; height: 44px; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15);
+            color: white; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; backdrop-filter: blur(10px); transition: 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        #btn-back:hover { background: rgba(255, 255, 255, 0.2); border-color: var(--accent-blue); }
+
+        /* Onay Modalı Stili */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(8px);
+            display: none; align-items: center; justify-content: center; z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-card {
+            background: #0f1523; border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px; padding: 26px 20px 20px 20px; width: 85%; max-width: 320px;
+            text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+        }
+        .modal-title { margin: 0 0 10px 0; font-size: 18px; font-weight: 700; color: #ffffff; }
+        .modal-desc { margin: 0 0 22px 0; font-size: 13px; color: #94a3b8; line-height: 1.4; }
+        .modal-buttons { display: flex; gap: 12px; }
+        .btn-cancel {
+            flex: 1; padding: 12px 0; border-radius: 12px;
+            background: #1e2638; border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #ffffff; font-weight: 700; font-size: 14px; cursor: pointer; transition: 0.2s;
+        }
+        .btn-cancel:hover { background: #2a344d; }
+        .btn-confirm {
+            flex: 1; padding: 12px 0; border-radius: 12px;
+            background: #28b5f6; border: none;
+            color: #ffffff; font-weight: 700; font-size: 14px; cursor: pointer;
+            text-decoration: none; display: inline-block; transition: 0.2s;
+        }
+        .btn-confirm:hover { background: #0288d1; }
+
+        #top-timeline {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            width: 90%; max-width: 500px; z-index: 100;
+            background: rgba(8, 12, 22, 0.85); backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.15); padding: 15px 20px; border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; gap: 10px;
+            box-sizing: border-box;
+        }
+        .slider-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 1px;}
+        #slider-val-text { color: var(--text-main); }
+        input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; background: transparent; margin: 5px 0; touch-action: none;}
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 5px; }
+        input[type=range]::-webkit-slider-thumb { height: 22px; width: 22px; border-radius: 50%; background: white; cursor: pointer; -webkit-appearance: none; margin-top: -8px; box-shadow: 0 0 15px rgba(0, 242, 254, 0.6); border: 2px solid #000;}
+
+        #top-controls { position: fixed; top: 100px; right: 20px; z-index: 100; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+        #btn-cross {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.1); color: white;
+            padding: 10px 20px; border-radius: 30px; font-size: 14px; font-weight: bold;
+            cursor: pointer; backdrop-filter: blur(10px); transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 8px;
+        }
+        #btn-cross:hover { background: rgba(255, 255, 255, 0.1); }
+        #btn-cross.active { background: rgba(255, 51, 102, 0.2); border-color: var(--accent-red); box-shadow: 0 0 20px rgba(255, 51, 102, 0.4); }
+
+        #layer-legend {
+            position: fixed; top: 100px; left: 20px; background: rgba(8, 12, 22, 0.8); backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1); padding: 15px 20px; border-radius: 16px;
+            z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.4s; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+        #layer-legend h4 { margin: 0 0 10px 0; color: var(--accent-gold); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+        #layer-legend ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+        #layer-legend li { font-size: 13px; display: flex; align-items: center; gap: 8px; font-weight: 500;}
+        #layer-legend b { color: var(--accent-green); font-family: monospace; font-size: 14px; margin-left: 5px; }
+
+        #section-helper {
+            position: fixed; right: 20px; bottom: 128px; z-index: 100;
+            width: min(310px, calc(100% - 40px)); padding: 14px 16px;
+            background: rgba(8, 12, 22, 0.88); border: 1px solid rgba(255, 51, 102, 0.45);
+            border-radius: 14px; backdrop-filter: blur(15px); box-shadow: 0 10px 30px rgba(0,0,0,0.75);
+            opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity 0.35s, transform 0.35s;
+        }
+        #section-helper.active { opacity: 1; transform: translateY(0); }
+        #section-helper strong { display: block; color: var(--accent-red); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; }
+        #section-helper span { color: #cbd5e1; font-size: 12px; line-height: 1.45; }
+
+        .object-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 10px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .object-legend span { font-size: 10px; color: #cbd5e1; }
+        .legend-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; }
+
+        #bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; width: 100%; max-width: 100vw; background: rgba(8, 12, 22, 0.92); backdrop-filter: var(--backdrop); border-top-left-radius: 24px; border-top-right-radius: 24px; border-top: 1px solid rgba(255,255,255,0.12); box-shadow: 0 -10px 40px rgba(0,0,0,0.9); z-index: 50; display: flex; flex-direction: column; transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); transform: translateY(0); max-height: 90vh; overflow-x: hidden; }
+        #bottom-sheet.collapsed { transform: translateY(calc(100% - 110px)); }
+        #drag-area { width: 100%; padding: 12px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: grab; touch-action: none; }
+        .drag-handle { width: 45px; height: 5px; background: rgba(255,255,255,0.3); border-radius: 10px; margin-bottom: 5px;}
+        .sheet-hint { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
+
+        .path-selector { display: flex; gap: 8px; padding: 0 20px 10px 20px; overflow-x: auto; scrollbar-width: none; }
+        .path-selector::-webkit-scrollbar { display: none; }
+        .path-btn { flex: 1; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 8px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.3s; white-space: nowrap; text-align: center; }
+        .path-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+        .path-btn.active[data-path="sun"] { background: rgba(255, 215, 0, 0.2); border-color: var(--accent-gold); color: var(--accent-gold); }
+        .path-btn.active[data-path="neutron"] { background: rgba(0, 242, 254, 0.2); border-color: var(--accent-blue); color: var(--accent-blue); }
+        .path-btn.active[data-path="blackhole"] { background: rgba(176, 38, 255, 0.2); border-color: var(--accent-purple); color: #d48cff; }
+
+        .planet-list-container { padding: 0 15px 15px 15px; }
+        .planet-list { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
+        .planet-list::-webkit-scrollbar { display: none; } 
+        .planet-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; transition: 0.3s; }
+        .planet-btn.active { background: rgba(255,255,255,0.15); box-shadow: 0 0 15px rgba(255,255,255,0.3); border-color: white; }
+
+        .sheet-content { padding: 0 20px 25px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .card { background: var(--card-bg); border-radius: 16px; padding: 18px; border: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow: hidden; }
+        .card-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-blue); margin: 0; display: flex; align-items: center; justify-content: space-between; min-width: 0; overflow-wrap: anywhere; }
+        
+        .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 5px; }
+        @media (min-width: 600px) { .info-grid { grid-template-columns: repeat(4, 1fr); } }
+        .info-item { display: flex; flex-direction: column; gap: 3px; background: rgba(0,0,0,0.4); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.03); }
+        .info-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+        .info-value { font-size: 14px; font-weight: bold; color: var(--text-main); font-family: monospace; }
+        .fuel-bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 4px;}
+        .fuel-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #00f2fe, #00ff88); transition: background 0.5s; border-radius: 4px; }
+        .info-desc { font-size: 13px; line-height: 1.5; color: #cbd5e1; margin-top: 4px; }
+        .reaction-box { background: rgba(255, 255, 255, 0.05); grid-column: span 2; }
+
+        /* Mobil Uyum (Telefon Modu Çakışma Önleyici) */
+        @media (max-width: 600px) {
+            #btn-back { top: 15px; left: 15px; }
+            #top-timeline { top: 70px; width: calc(100% - 30px); padding: 10px 16px; }
+            #top-controls { top: 150px; right: 15px; }
+            #layer-legend { top: 150px; left: 15px; }
+            #section-helper { left: 15px; right: 15px; bottom: 120px; width: auto; max-width: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+    
+    <!-- Yuvarlak Sol Ok Butonu -->
+    <button id="btn-back" aria-label="Ana Ekrana Dön" data-i18n-aria-label="se_back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+    </button>
+
+    <!-- Ana Ekran Onay Modalı -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-card">
+            <h3 class="modal-title" data-i18n="se_modal_title">Ana Ekrana Dön</h3>
+            <p class="modal-desc" data-i18n="se_modal_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-buttons">
+                <button id="btn-modal-cancel" class="btn-cancel" data-i18n="se_cancel">İptal</button>
+                <a href="index.html" id="btn-modal-confirm" class="btn-confirm" data-i18n="se_confirm">Evet</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="top-timeline">
+        <div class="slider-header">
+            <span data-i18n="se_timeline">⏳ İleri Sar</span>
+            <span id="slider-val-text">4.60 Milyar Yıl</span>
+        </div>
+        <input type="range" id="age-slider" min="0" max="14" step="0.05" value="4.6">
+    </div>
+
+    <div id="top-controls"><button id="btn-cross" data-i18n="se_cross">✂ Kesit Görünümü</button></div>
+    <div id="layer-legend"></div>
+    <div id="section-helper">
+        <strong data-i18n="se_helper_title">Kesit Modu Aktif</strong>
+        <span data-i18n="se_helper_desc">Modelin ön yarısı kaldırıldı. İç katmanları ve merkezdeki kompakt nesneyi doğrudan karşılaştırabilirsiniz.</span>
+        <div class="object-legend">
+            <span><i class="legend-dot" style="background:#ff9d18;"></i><span data-i18n="se_legend_outer">Dış katman</span></span>
+            <span><i class="legend-dot" style="background:#00f2fe;"></i><span data-i18n="se_legend_magnetic">Manyetik alan</span></span>
+            <span><i class="legend-dot" style="background:#ff3366;"></i><span data-i18n="se_legend_disk">Enerjik disk</span></span>
+        </div>
+    </div>
+
+    <div id="bottom-sheet" class="collapsed">
+        <div id="drag-area">
+            <div class="drag-handle"></div>
+            <span class="sheet-hint" data-i18n="se_sheet_hint">Evre Bilgisini Göster / Gizle</span>
+        </div>
+        
+        <div class="path-selector">
+            <button class="path-btn active" data-path="sun" data-i18n="se_path_sun">☀️ Güneş Benzeri (1 M☉)</button>
+            <button class="path-btn" data-path="neutron" data-i18n="se_path_neutron">🌟 Dev Yıldız (15 M☉)</button>
+            <button class="path-btn" data-path="blackhole" data-i18n="se_path_blackhole">🌌 Süper Dev (40 M☉)</button>
+        </div>
+
+        <div class="planet-list-container"><div class="planet-list" id="stage-list"></div></div>
+        
+        <div class="sheet-content">
+            <div class="card" id="stage-info">
+                <div class="card-title">
+                    <span id="title-text" style="color: var(--accent-gold);" data-i18n="se_params">📊 Canlı Yıldız Parametreleri</span>
+                    <span id="stage-name-badge" style="font-size: 10px; color: white; border: 1px solid white; padding: 2px 6px; border-radius: 8px;">ANAKOL</span>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div style="display: flex; justify-content: space-between; font-size:11px;">
+                            <span class="info-label" id="fuel-type-label" data-i18n="se_label_hydrogen">⚛️ Hidrojen</span>
+                            <span id="fuel-val-text" style="color: var(--accent-green); font-weight:bold;">75%</span>
+                        </div>
+                        <div class="fuel-bar-bg"><div id="fuel-bar-fill" class="fuel-bar-fill"></div></div>
+                    </div>
+                    
+                    <div class="info-item reaction-box">
+                        <span class="info-label" data-i18n="se_label_process">🔄 Çekirdek Süreci</span>
+                        <span class="info-value" id="val-reaction" style="color: #ffaa55; font-size: 14px;">4H → He + Enerji</span>
+                    </div>
+                    
+                    <div class="info-item"><span class="info-label" data-i18n="se_label_mass">⚖️ Kütle</span><span class="info-value" id="val-mass" style="color: var(--text-main);">1.00 M☉</span></div>
+                    <div class="info-item"><span class="info-label" data-i18n="se_label_radius">📏 Yarıçap</span><span class="info-value" id="val-radius" style="color: var(--text-main);">1.00 R☉</span></div>
+                    <div class="info-item"><span class="info-label" data-i18n="se_label_temperature">🌡️ Sıcaklık</span><span class="info-value" id="val-temp" style="color: var(--text-main);">5,500 °C</span></div>
+                    <div class="info-item"><span class="info-label" data-i18n="se_label_luminosity">✨ Luminosite</span><span class="info-value" id="val-lum" style="color: var(--text-main);">1.00 L☉</span></div>
+                </div>
+
+                <div class="info-item" style="background: rgba(0,0,0,0.5); margin-top: 5px;">
+                    <span class="info-label" data-i18n="se_label_analysis">📜 Astrofiziksel Analiz</span>
+                    <span class="info-desc" id="val-desc">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- MODAL MANTIĞI ---
+    const btnBack = document.getElementById('btn-back');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const btnModalCancel = document.getElementById('btn-modal-cancel');
+
+    btnBack.addEventListener('click', () => { modalOverlay.classList.add('active'); });
+    btnModalCancel.addEventListener('click', () => { modalOverlay.classList.remove('active'); });
+    modalOverlay.addEventListener('click', (e) => { if(e.target === modalOverlay) modalOverlay.classList.remove('active'); });
+
+    // --- THREE.JS SETUP ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x010103);
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 50000);
+    camera.position.set(0, 100, 450);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.localClippingEnabled = true; container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor = 0.05; controls.maxDistance = 2500; controls.minDistance = 20;
+
+    const clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 1000);
+
+    function createCircle() { const c=document.createElement('canvas');c.width=32;c.height=32;const x=c.getContext('2d');x.beginPath();x.arc(16,16,14,0,Math.PI*2);x.fillStyle='#fff';x.fill();return new THREE.CanvasTexture(c); }
+    const circleTexture = createCircle();
+    const count = 3000; const bgGeo = new THREE.BufferGeometry(); const bgPos = new Float32Array(count * 3); const bgCol = new Float32Array(count * 3);
+    const palette = [new THREE.Color(0xffffff), new THREE.Color(0x88ccff), new THREE.Color(0xffddaa)];
+    for (let i = 0; i < count; i++) { bgPos[i*3]=(Math.random()-0.5)*4000; bgPos[i*3+1]=(Math.random()-0.5)*4000; bgPos[i*3+2]=(Math.random()-0.5)*4000; const c = palette[Math.floor(Math.random() * palette.length)]; bgCol[i*3]=c.r; bgCol[i*3+1]=c.g; bgCol[i*3+2]=c.b; }
+    bgGeo.setAttribute('position', new THREE.BufferAttribute(bgPos, 3)); bgGeo.setAttribute('color', new THREE.BufferAttribute(bgCol, 3));
+    scene.add(new THREE.Points(bgGeo, new THREE.PointsMaterial({ size: 2.5, vertexColors: true, map: circleTexture, transparent: true, opacity: 0.5, depthWrite: false })));
+
+    const nebulaCanvas = document.createElement('canvas'); nebulaCanvas.width = 512; nebulaCanvas.height = 512;
+    const nebulaContext = nebulaCanvas.getContext('2d');
+    const nebulaGradient = nebulaContext.createRadialGradient(256, 256, 0, 256, 256, 256);
+    nebulaGradient.addColorStop(0, 'rgba(80, 150, 255, 0.28)');
+    nebulaGradient.addColorStop(0.35, 'rgba(120, 40, 255, 0.16)');
+    nebulaGradient.addColorStop(0.72, 'rgba(10, 80, 180, 0.06)');
+    nebulaGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    nebulaContext.fillStyle = nebulaGradient; nebulaContext.fillRect(0, 0, 512, 512);
+    const nebulaTexture = new THREE.CanvasTexture(nebulaCanvas);
+    const nebulaGroup = new THREE.Group();
+    [[-900, 500, -900, 900, 0x4477ff], [1000, -350, -500, 700, 0xb044ff], [-700, -450, 650, 820, 0xff3366], [900, 550, 800, 620, 0x00aaff]].forEach(([x, y, z, size, color]) => {
+        const nebula = new THREE.Sprite(new THREE.SpriteMaterial({ map: nebulaTexture, color, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false }));
+        nebula.position.set(x, y, z); nebula.scale.set(size, size * 0.7, 1); nebulaGroup.add(nebula);
+    });
+    scene.add(nebulaGroup);
+
+    const glslNoise = `
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+        float snoise(vec3 v) {
+            const vec2  C = vec2(1.0/6.0, 1.0/3.0) ; const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+            vec3 i  = floor(v + dot(v, C.yyy) ); vec3 x0 = v - i + dot(i, C.xxx) ; vec3 g = step(x0.yzx, x0.xyz); vec3 l = 1.0 - g;
+            vec3 i1 = min( g.xyz, l.zxy ); vec3 i2 = max( g.xyz, l.zxy ); vec3 x1 = x0 - i1 + C.xxx; vec3 x2 = x0 - i2 + C.yyy; vec3 x3 = x0 - D.yyy;
+            i = mod289(i); vec4 p = permute( permute( permute( i.z + vec4(0.0, i1.z, i2.z, 1.0 )) + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+            float n_ = 0.142857142857; vec3  ns = n_ * D.wyz - D.xzx; vec4 j = p - 49.0 * floor(p * ns.z * ns.z); vec4 x_ = floor(j * ns.z);
+            vec4 y_ = floor(j - 7.0 * x_ ); vec4 x = x_ *ns.x + ns.yyyy; vec4 y = y_ *ns.x + ns.yyyy; vec4 h = 1.0 - abs(x) - abs(y);
+            vec4 b0 = vec4( x.xy, y.xy ); vec4 b1 = vec4( x.zw, y.zw ); vec4 s0 = floor(b0)*2.0 + 1.0; vec4 s1 = floor(b1)*2.0 + 1.0; vec4 sh = -step(h, vec4(0.0));
+            vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ; vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ; vec3 p0 = vec3(a0.xy,h.x); vec3 p1 = vec3(a0.zw,h.y);
+            vec3 p2 = vec3(a1.xy,h.z); vec3 p3 = vec3(a1.zw,h.w); vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+            p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w; vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+            m = m * m; return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+        }
+    `;
+
+    const mainGroup = new THREE.Group(); scene.add(mainGroup);
+    
+    // 1. STANDART YILDIZ
+    const starGroup = new THREE.Group(); mainGroup.add(starGroup);
+    const baseRadius = 30;
+    
+    const coreMat = new THREE.ShaderMaterial({
+        vertexShader: `#include <common>\n#include <clipping_planes_pars_vertex>\nvarying vec3 vNormal; varying vec3 vPos;\nvoid main() { \n#include <begin_vertex>\nvNormal = normalize(normalMatrix * normal); vPos = position;\n#include <project_vertex>\n#include <clipping_planes_vertex>\n}`,
+        fragmentShader: `#include <common>\n#include <clipping_planes_pars_fragment>\n${glslNoise}\nvarying vec3 vNormal; varying vec3 vPos; uniform vec3 colorCenter; uniform vec3 colorEdge; uniform float time;\nvoid main() { \n#include <clipping_planes_fragment>\nfloat noise = snoise(vPos * 0.1 + time * 0.5) * 0.5 + 0.5; float noiseDetail = snoise(vPos * 0.3 - time * 0.2) * 0.2; float finalNoise = clamp(noise + noiseDetail, 0.0, 1.0); float fresnel = clamp(dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0, 1.0); vec3 baseColor = mix(colorEdge, colorCenter, fresnel); vec3 finalColor = mix(baseColor * 0.7, baseColor * 1.3, finalNoise); gl_FragColor = vec4(finalColor, 1.0); }`,
+        uniforms: { colorCenter: { value: new THREE.Color() }, colorEdge: { value: new THREE.Color() }, time: { value: 0 } }, clipping: true, clippingPlanes: [clipPlane], side: THREE.DoubleSide
+    });
+    starGroup.add(new THREE.Mesh(new THREE.SphereGeometry(baseRadius, 128, 128), coreMat));
+
+    const innerLayers = new THREE.Group(); starGroup.add(innerLayers);
+    const l1 = new THREE.Mesh(new THREE.SphereGeometry(baseRadius*0.2,32,32), new THREE.MeshBasicMaterial({color:0xffffff, side:THREE.DoubleSide, clippingPlanes:[clipPlane]}));
+    const l2 = new THREE.Mesh(new THREE.SphereGeometry(baseRadius*0.55,64,64), new THREE.MeshBasicMaterial({color:0x00ff88, side:THREE.DoubleSide, clippingPlanes:[clipPlane], transparent:true, opacity:0.85}));
+    const l3 = new THREE.Mesh(new THREE.SphereGeometry(baseRadius*0.85,64,64), new THREE.MeshBasicMaterial({color:0xffdd44, side:THREE.DoubleSide, clippingPlanes:[clipPlane], transparent:true, opacity:0.7}));
+    innerLayers.add(l1, l2, l3);
+
+    const atmosMat = new THREE.ShaderMaterial({
+        vertexShader: `#include <common>\n#include <clipping_planes_pars_vertex>\nvarying vec3 vNormal; void main() { \n#include <begin_vertex>\nvNormal = normalize(normalMatrix * normal); \n#include <project_vertex>\n#include <clipping_planes_vertex>\n}`,
+        fragmentShader: `#include <common>\n#include <clipping_planes_pars_fragment>\nvarying vec3 vNormal; uniform vec3 atmosColor; uniform float time;\nvoid main() { \n#include <clipping_planes_fragment>\nfloat intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.5); float pulse = 1.0 + 0.1 * sin(time * 3.0); gl_FragColor = vec4(atmosColor, 1.0) * intensity * 1.5 * pulse; }`,
+        uniforms: { atmosColor: { value: new THREE.Color() }, time: { value: 0 } }, blending: THREE.AdditiveBlending, transparent: true, side: THREE.BackSide, depthWrite: false, clipping: true, clippingPlanes: [clipPlane]
+    });
+    starGroup.add(new THREE.Mesh(new THREE.SphereGeometry(baseRadius * 1.18, 64, 64), atmosMat));
+
+    const ctx = document.createElement('canvas').getContext('2d'); ctx.canvas.width = 512; ctx.canvas.height = 512;
+    const grad = ctx.createRadialGradient(256, 256, 0, 256, 256, 256); grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.15, 'rgba(255,255,255,0.8)'); grad.addColorStop(0.4, 'rgba(255,255,255,0.3)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = grad; ctx.fillRect(0, 0, 512, 512);
+    const coronaMat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(ctx.canvas), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false });
+    const coronaSprite = new THREE.Sprite(coronaMat); starGroup.add(coronaSprite);
+
+    const pGeo=new THREE.BufferGeometry(); const pPos=new Float32Array(1500*3);
+    for(let i=0; i<1500; i++) { const r=60+Math.random()*200, t=Math.random()*Math.PI*2, p=(Math.random()-0.5)*Math.PI; pPos[i*3]=r*Math.cos(t)*Math.cos(p); pPos[i*3+1]=r*Math.sin(p); pPos[i*3+2]=r*Math.sin(t)*Math.cos(p); }
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    const particleMat = new THREE.PointsMaterial({ size: 4, map: circleTexture, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+    const nebulaParticles = new THREE.Points(pGeo, particleMat); starGroup.add(nebulaParticles);
+
+    // --- NÖTRON YILDIZI (PULSAR) ---
+    const pulsarGroup = new THREE.Group(); mainGroup.add(pulsarGroup); pulsarGroup.visible = false;
+    const nsMesh = new THREE.Mesh(new THREE.SphereGeometry(baseRadius*0.22, 48, 48), new THREE.MeshBasicMaterial({color: 0xe0ffff, clippingPlanes: [clipPlane]}));
+    const nsWire = new THREE.Mesh(new THREE.IcosahedronGeometry(baseRadius*0.28, 2), new THREE.MeshBasicMaterial({color: 0x00ffff, wireframe: true, transparent: true, opacity: 0.85, clippingPlanes: [clipPlane]}));
+    const nsRing = new THREE.Mesh(new THREE.TorusGeometry(baseRadius*0.48, 0.8, 20, 96), new THREE.MeshBasicMaterial({color: 0x00f2fe, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, side: THREE.DoubleSide}));
+    nsRing.rotation.x = Math.PI / 2;
+    const nsGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(ctx.canvas), color: 0x00f2fe, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.9 }));
+    nsGlow.scale.set(baseRadius * 2.2, baseRadius * 2.2, 1);
+    const magneticRings = [];
+    [0.7, 0.95, 1.2].forEach((ringScale, index) => {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(baseRadius * ringScale, 0.35, 12, 96), new THREE.MeshBasicMaterial({ color: index === 1 ? 0xffffff : 0x0088ff, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
+        ring.rotation.x = Math.PI / 2;
+        ring.rotation.z = index * 0.35;
+        magneticRings.push(ring);
+        pulsarGroup.add(ring);
+    });
+    pulsarGroup.add(nsMesh, nsWire, nsRing, nsGlow);
+
+    const jetGeo = new THREE.CylinderGeometry(0.3, 14, 800, 32, 1, true);
+    const jetMat = new THREE.ShaderMaterial({
+        vertexShader: `#include <clipping_planes_pars_vertex>\nvarying vec2 vUv; varying vec3 vPos;\nvoid main() { vUv = uv; vPos = position; \n#include <begin_vertex>\n#include <project_vertex>\n#include <clipping_planes_vertex>\n}`,
+        fragmentShader: `#include <clipping_planes_pars_fragment>\n${glslNoise}\nvarying vec2 vUv; varying vec3 vPos; uniform float time;\nvoid main() { \n#include <clipping_planes_fragment>\n
+            float streak = snoise(vec3(vUv.x * 20.0, vUv.y * 3.0 - time * 25.0, time * 3.0)); 
+            float edgeFade = sin(vUv.x * 3.1415); 
+            float distanceFade = pow(1.0 - vUv.y, 2.0);
+            float coreBright = step(0.4, edgeFade) * 0.6; 
+            vec3 color = mix(vec3(0.0, 0.3, 1.0), vec3(0.8, 0.95, 1.0), streak * edgeFade + coreBright); 
+            gl_FragColor = vec4(color, edgeFade * distanceFade * (0.6 + 0.4 * streak)); 
+        }`,
+        uniforms: { time: { value: 0 } }, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, clipping: true, clippingPlanes: [clipPlane]
+    });
+    const jetTop = new THREE.Mesh(jetGeo, jetMat); jetTop.position.y = 400; 
+    const jetBot = new THREE.Mesh(jetGeo, jetMat); jetBot.position.y = -400; jetBot.rotation.x = Math.PI;
+    const beamMat = new THREE.MeshBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false });
+    const beamTop = new THREE.Mesh(new THREE.ConeGeometry(28, 650, 32, 1, true), beamMat); beamTop.position.y = 280;
+    const beamBot = new THREE.Mesh(new THREE.ConeGeometry(28, 650, 32, 1, true), beamMat); beamBot.position.y = -280; beamBot.rotation.x = Math.PI;
+    pulsarGroup.add(jetTop, jetBot, beamTop, beamBot);
+
+    // 3. KARA DELİK
+    const blackHoleGroup = new THREE.Group(); mainGroup.add(blackHoleGroup); blackHoleGroup.visible = false;
+    const eventHorizon = new THREE.Mesh(new THREE.SphereGeometry(baseRadius*0.34, 96, 96), new THREE.MeshBasicMaterial({color: 0x000000, clippingPlanes: [clipPlane]})); blackHoleGroup.add(eventHorizon);
+    const diskMat = new THREE.ShaderMaterial({
+        vertexShader: `#include <clipping_planes_pars_vertex>\nvarying vec3 vPos; void main() { vPos = position; \n#include <begin_vertex>\n#include <project_vertex>\n#include <clipping_planes_vertex>\n}`,
+        fragmentShader: `#include <clipping_planes_pars_fragment>\n${glslNoise}\nvarying vec3 vPos; uniform float time;\nvoid main() {\n#include <clipping_planes_fragment>\nfloat r = length(vPos.xy); float normR = (r - 12.0) / (35.0 - 12.0); if(normR < 0.0 || normR > 1.0) discard; float angle = atan(vPos.y, vPos.x); float doppler = 1.0 + 0.6 * sin(angle); float swirl = snoise(vec3(vPos.x * 0.2, vPos.y * 0.2, time * 2.0)); vec3 cInner = vec3(1.0, 0.9, 0.7); vec3 cMid = vec3(1.0, 0.4, 0.0); vec3 cOuter = vec3(0.2, 0.0, 0.3); vec3 color = mix(cInner, cMid, normR * 2.0 - swirl*0.1); if (normR > 0.5) color = mix(cMid, cOuter, (normR - 0.5) * 2.0 + swirl*0.1); color *= doppler; float alpha = (1.0 - normR) * (0.8 + 0.2 * swirl) * doppler; gl_FragColor = vec4(color, alpha * 1.5); }`,
+        uniforms: { time: { value: 0 } }, transparent: true, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false, clipping: true, clippingPlanes: [clipPlane]
+    });
+    const diskMesh = new THREE.Mesh(new THREE.RingGeometry(12, 45, 128), diskMat); diskMesh.rotation.x = Math.PI / 2.2; blackHoleGroup.add(diskMesh);
+    const diskOuterGlow = new THREE.Mesh(new THREE.RingGeometry(45, 52, 128), new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.14, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }));
+    diskOuterGlow.rotation.x = Math.PI / 2.2; blackHoleGroup.add(diskOuterGlow);
+    const photonSphere = new THREE.Mesh(new THREE.TorusGeometry(baseRadius*0.42, 0.8, 24, 128), new THREE.MeshBasicMaterial({color: 0xff8a32, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, clippingPlanes: [clipPlane]}));
+    photonSphere.rotation.x = Math.PI / 2.2; blackHoleGroup.add(photonSphere);
+    const blackHoleGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(ctx.canvas), color: 0xff3300, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false }));
+    blackHoleGlow.scale.set(135, 135, 1); blackHoleGroup.add(blackHoleGlow);
+
+    // --- ASTROFİZİKSEL SENARYOLAR ---
+    const starPaths = {
+        'sun': {
+            title: "☀️ Güneş (1 M☉)", color: "var(--accent-gold)",
+            data: [
+                { age: 0, name: "YILDIZARASI BULUTSU", nameKey: "se_stage_cloud", mass: 1.20, radius: 1000.0, temp: -263, lum: 0.001, fuel: 100, reaction: "Kütleçekimsel Büzülme", reactionKey: "se_reaction_gravitational", descKey: "se_desc_sun_cloud", cC: 0x00aaff, cE: 0x002288, cA: 0x0044cc, scale: 2.0, glow: 6, pOp: 0.8 },
+                { age: 4.6, name: "ANAKOL", nameKey: "se_stage_main_sequence", mass: 1.00, radius: 1.00, temp: 5500, lum: 1.00, fuel: 75, reaction: "4H → He + Enerji", reactionKey: "se_reaction_hydrogen", descKey: "se_desc_sun_main", cC: 0xffffff, cE: 0xffaa00, cA: 0xff4400, scale: 1.0, glow: 4.5, pOp: 0.01 },
+                { age: 10.2, name: "KIRMIZI DEV", nameKey: "se_stage_red_giant", mass: 0.85, radius: 160.0, temp: 3200, lum: 2500.0, fuel: 35, reaction: "He → C + O", reactionKey: "se_reaction_helium", descKey: "se_desc_sun_red", cC: 0xffaa55, cE: 0xcc0000, cA: 0x880000, scale: 3.5, glow: 6.0, pOp: 0.15 },
+                { age: 14.0, name: "BEYAZ CÜCE", nameKey: "se_stage_white_dwarf", mass: 0.60, radius: 0.01, temp: 100000, lum: 0.001, fuel: 0, reaction: "Füzyon Durdu", reactionKey: "se_reaction_stopped", descKey: "se_desc_sun_white", cC: 0xffffff, cE: 0xaaccff, cA: 0x5588ff, scale: 0.25, glow: 2.5, pOp: 0.0 }
+            ]
+        },
+        'neutron': {
+            title: "🌟 Dev Yıldız (15 M☉)", color: "var(--accent-blue)",
+            data: [
+                { age: 0, name: "YILDIZARASI BULUTSU", nameKey: "se_stage_cloud", mass: 18.0, radius: 1500.0, temp: -263, lum: 0.001, fuel: 100, reaction: "Hızlı Büzülme", reactionKey: "se_reaction_fast_collapse", descKey: "se_desc_massive_cloud", cC: 0x00aaff, cE: 0x002288, cA: 0x0044cc, scale: 2.5, glow: 6, pOp: 0.8 },
+                { age: 3.0, name: "MAVİ DEV (O/B Sınıfı)", nameKey: "se_stage_blue_giant", mass: 15.0, radius: 7.0, temp: 30000, lum: 20000.0, fuel: 50, reaction: "CNO Döngüsü (H→He)", reactionKey: "se_reaction_cno", descKey: "se_desc_blue_giant", cC: 0xffffff, cE: 0x00aaff, cA: 0x0055ff, scale: 1.5, glow: 5.5, pOp: 0.05 },
+                { age: 10.0, name: "KIRMIZI SÜPERDEV", nameKey: "se_stage_red_supergiant", mass: 12.0, radius: 800.0, temp: 3500, lum: 100000.0, fuel: 10, reaction: "He → C → Ne → O → Si", reactionKey: "se_reaction_burning", descKey: "se_desc_red_supergiant", cC: 0xff8833, cE: 0xaa0000, cA: 0x660000, scale: 4.5, glow: 6.5, pOp: 0.2 },
+                { age: 10.5, name: "SÜPERNOVA", nameKey: "se_stage_supernova", mass: 10.0, radius: 5000.0, temp: 1e9, lum: 1e9, fuel: 0, reaction: "Çekirdek Çökmesi", reactionKey: "se_reaction_collapse", descKey: "se_desc_supernova", cC: 0xffffff, cE: 0xffffff, cA: 0x00ffff, scale: 8.0, glow: 15.0, pOp: 1.0 },
+                { age: 14.0, name: "NÖTRON YILDIZI (Pulsar)", nameKey: "se_stage_neutron_star", mass: 1.4, radius: 0.00002, temp: 1e6, lum: 0.1, fuel: 0, reaction: "Nötron Dejenerasyonu", reactionKey: "se_reaction_neutron", descKey: "se_desc_neutron", cC: 0x00ffff, cE: 0x00aaff, cA: 0x0000ff, scale: 1.0, glow: 2.0, pOp: 0.0 }
+            ]
+        },
+        'blackhole': {
+            title: "🌌 Süper Dev (40 M☉)", color: "var(--accent-purple)",
+            data: [
+                { age: 0, name: "DEVASA BULUTSU", nameKey: "se_stage_cloud", mass: 45.0, radius: 2000.0, temp: -263, lum: 0.001, fuel: 100, reaction: "Kütleçekimsel Büzülme", reactionKey: "se_reaction_gravitational", descKey: "se_desc_sun_cloud", cC: 0x00aaff, cE: 0x002288, cA: 0x0044cc, scale: 3.0, glow: 6, pOp: 0.9 },
+                { age: 2.0, name: "MAVİ SÜPERDEV", nameKey: "se_stage_blue_supergiant", mass: 40.0, radius: 20.0, temp: 40000, lum: 500000.0, fuel: 40, reaction: "Aşırı Hızlı Füzyon", reactionKey: "se_reaction_hydrogen", descKey: "se_desc_blue_supergiant", cC: 0xffffff, cE: 0x88ccff, cA: 0x3388ff, scale: 2.0, glow: 6.0, pOp: 0.1 },
+                { age: 5.0, name: "WOLF-RAYET YILDIZI", nameKey: "se_stage_wolf_rayet", mass: 25.0, radius: 15.0, temp: 50000, lum: 800000.0, fuel: 5, reaction: "Ağır Element Füzyonu", reactionKey: "se_reaction_heavy", descKey: "se_desc_wolf_rayet", cC: 0xffddff, cE: 0xff00aa, cA: 0x8800ff, scale: 1.8, glow: 7.0, pOp: 0.6 },
+                { age: 5.5, name: "HİPERNOVA", nameKey: "se_stage_hypernova", mass: 20.0, radius: 8000.0, temp: 5e9, lum: 1e10, fuel: 0, reaction: "Tamamen Çöküş", reactionKey: "se_reaction_hyper", descKey: "se_desc_hypernova", cC: 0xffffff, cE: 0xffffff, cA: 0xaa00ff, scale: 10.0, glow: 20.0, pOp: 1.0 },
+                { age: 14.0, name: "KARA DELİK", nameKey: "se_stage_blackhole", mass: 10.0, radius: 0.00004, temp: 0, lum: 0, fuel: 0, reaction: "Tekillik (Singularity)", reactionKey: "se_reaction_singularity", descKey: "se_desc_blackhole", cC: 0x000000, cE: 0x000000, cA: 0x000000, scale: 1.0, glow: 0, pOp: 0.0 }
+            ]
+        }
+    };
+
+    let currentPathKey = 'sun'; let timelineData = starPaths[currentPathKey].data;
+    let currentGlowScale = 4.5, timeControl = { age: timelineData[0].age }, currentTween = null, isCrossSection = false;
+
+    function localizedFrame(frame) {
+        return {
+            name: t(frame.nameKey) || frame.name,
+            reaction: t(frame.reactionKey) || frame.reaction,
+            desc: t(frame.descKey) || frame.desc
+        };
+    }
+
+    function formatYear(value) {
+        return t('se_year_format').replace('{value}', value);
+    }
+
+    function updateLocalizedContent() {
+        buildStageButtons();
+        renderStarAtAge(timeControl.age);
+    }
+
+    window.onLanguageChange = updateLocalizedContent;
+
+    function updateLayerLegend(age, activeFrame) {
+        const legend = document.getElementById('layer-legend'); const name = activeFrame.name;
+        const itemList = (items) => `<ul>${items.map(item => `<li>${t(item)}</li>`).join('')}</ul>`;
+        if (activeFrame.nameKey === "se_stage_cloud") legend.innerHTML = `<h4>${t('se_legend_gas')}</h4><p style='color:var(--text-muted);'>${t('se_legend_no_layers')}</p>`;
+        else if (activeFrame.nameKey === "se_stage_blackhole") legend.innerHTML = `<h4>${t('se_legend_blackhole')}</h4>${itemList(['se_legend_accretion', 'se_legend_photon', 'se_legend_horizon', 'se_legend_singularity'])}`;
+        else if (activeFrame.nameKey === "se_stage_neutron_star") legend.innerHTML = `<h4>${t('se_legend_neutron')}</h4>${itemList(['se_legend_jets', 'se_legend_field', 'se_legend_crust', 'se_legend_superfluid'])}`;
+        else if (["se_stage_blue_giant", "se_stage_red_supergiant", "se_stage_blue_supergiant", "se_stage_wolf_rayet"].includes(activeFrame.nameKey)) legend.innerHTML = `<h4>${t('se_legend_giant')}</h4>${itemList(['se_legend_envelope', 'se_legend_burning', 'se_legend_silicon', 'se_legend_iron'])}`;
+        else if (activeFrame.nameKey === "se_stage_white_dwarf") legend.innerHTML = `<h4>${t('se_legend_white_dwarf')}</h4>${itemList(['se_legend_atmosphere', 'se_legend_core'])}`;
+        else legend.innerHTML = `<h4>${t('se_legend_layers')}</h4>${itemList(['se_legend_corona', 'se_legend_photosphere', 'se_legend_convection', 'se_legend_radiation'])}<ul><li>${t('se_legend_core_process')} <b>(${localizedFrame(activeFrame).reaction})</b></li></ul>`;
+    }
+
+    function renderStarAtAge(targetAge) {
+        let startFrame = timelineData[0], endFrame = timelineData[timelineData.length - 1], progress = 0;
+        for (let i = 0; i < timelineData.length - 1; i++) {
+            if (targetAge >= timelineData[i].age && targetAge <= timelineData[i+1].age) { startFrame = timelineData[i]; endFrame = timelineData[i+1]; progress = (targetAge - startFrame.age) / (endFrame.age - startFrame.age); break; }
+        }
+        const mass = lerp(startFrame.mass, endFrame.mass, progress); const radius = lerp(startFrame.radius, endFrame.radius, progress); const temp = lerp(startFrame.temp, endFrame.temp, progress); const lum = lerp(startFrame.lum, endFrame.lum, progress); const fuel = lerp(startFrame.fuel, endFrame.fuel, progress); const scale = lerp(startFrame.scale, endFrame.scale, progress);
+        currentGlowScale = lerp(startFrame.glow, endFrame.glow, progress); particleMat.opacity = lerp(startFrame.pOp, endFrame.pOp, progress);
+        const activeFrame = progress < 0.5 ? startFrame : endFrame; const localized = localizedFrame(activeFrame); const isBlackHole = activeFrame.nameKey === "se_stage_blackhole"; const isNeutron = activeFrame.nameKey === "se_stage_neutron_star";
+        
+        blackHoleGroup.visible = isBlackHole; blackHoleGroup.scale.set(isBlackHole ? 1.35 : 1, isBlackHole ? 1.35 : 1, isBlackHole ? 1.35 : 1);
+        pulsarGroup.visible = isNeutron; starGroup.visible = !isBlackHole && !isNeutron; innerLayers.visible = !isBlackHole && !isNeutron && (targetAge > 0.1) && !["se_stage_supernova", "se_stage_hypernova"].includes(activeFrame.nameKey);
+
+        if(starGroup.visible) {
+            starGroup.scale.set(scale, scale, scale);
+            const cC = new THREE.Color().lerpColors(new THREE.Color(startFrame.cC), new THREE.Color(endFrame.cC), progress); const cE = new THREE.Color().lerpColors(new THREE.Color(startFrame.cE), new THREE.Color(endFrame.cE), progress); const cA = new THREE.Color().lerpColors(new THREE.Color(startFrame.cA), new THREE.Color(endFrame.cA), progress);
+            coreMat.uniforms.colorCenter.value.copy(cC); coreMat.uniforms.colorEdge.value.copy(cE); atmosMat.uniforms.atmosColor.value.copy(cA); coronaMat.color.copy(cE); particleMat.color.copy(cE);
+            if(["se_stage_blue_giant", "se_stage_red_supergiant", "se_stage_blue_supergiant", "se_stage_wolf_rayet"].includes(activeFrame.nameKey)) { l2.material.color.setHex(0xff3300); l3.material.color.setHex(0x550000); } else { l2.material.color.setHex(0x00ff88); l3.material.color.setHex(0xffdd44); }
+        }
+
+        document.getElementById('slider-val-text').textContent = formatYear(targetAge.toFixed(2));
+        document.getElementById('val-desc').textContent = localized.desc; document.getElementById('stage-name-badge').textContent = localized.name; document.getElementById('val-reaction').textContent = localized.reaction;
+        document.querySelectorAll('.planet-btn').forEach(b => b.classList.remove('active')); let activeIdx = timelineData.indexOf(activeFrame); if(document.querySelectorAll('.planet-btn')[activeIdx]) document.querySelectorAll('.planet-btn')[activeIdx].classList.add('active');
+        document.getElementById('val-mass').textContent = mass.toFixed(2) + " M☉";
+        if(isNeutron) document.getElementById('val-radius').textContent = t('se_radius_neutron'); else if (isBlackHole) document.getElementById('val-radius').textContent = t('se_radius_blackhole'); else document.getElementById('val-radius').textContent = radius >= 10 ? Math.round(radius) + " R☉" : radius.toFixed(2) + " R☉";
+        document.getElementById('val-temp').textContent = isBlackHole ? t('se_temp_absolute_zero') : (temp >= 10000 ? temp.toExponential(1) + " °C" : Math.round(temp).toLocaleString(currentLang === 'tr' ? 'tr-TR' : 'en-US') + " °C");
+        document.getElementById('val-lum').textContent = lum >= 100 ? lum.toExponential(2) + " L☉" : lum.toFixed(3) + " L☉";
+        const fuelFill = document.getElementById('fuel-bar-fill'); fuelFill.style.width = fuel.toFixed(1) + "%"; document.getElementById('fuel-val-text').textContent = fuel.toFixed(0) + "%";
+        fuelFill.style.background = fuel < 20 ? 'linear-gradient(90deg, #ff3366, #ff9900)' : 'linear-gradient(90deg, #00f2fe, #00ff88)';
+        updateLayerLegend(targetAge, activeFrame);
+    }
+    function lerp(start, end, amt) { return (1 - amt) * start + amt * end; }
+
+    function buildStageButtons() {
+        const btnContainer = document.getElementById('stage-list'); btnContainer.innerHTML = '';
+        timelineData.forEach((s, i) => {
+            let btn = document.createElement('button'); btn.className = 'planet-btn'; btn.textContent = localizedFrame(s).name.split(' (')[0]; btn.style.borderLeft = `3px solid #${new THREE.Color(s.cE).getHexString()}`;
+            btn.onclick = () => selectStageButton(i); btnContainer.appendChild(btn);
+        });
+    }
+
+    document.querySelectorAll('.path-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('active')); e.target.classList.add('active');
+            currentPathKey = e.target.getAttribute('data-path'); timelineData = starPaths[currentPathKey].data;
+            document.getElementById('title-text').style.color = starPaths[currentPathKey].color; document.getElementById('stage-name-badge').style.borderColor = starPaths[currentPathKey].color; document.getElementById('stage-name-badge').style.color = starPaths[currentPathKey].color;
+            buildStageButtons(); if(currentTween) currentTween.stop(); timeControl.age = 0; document.getElementById('age-slider').value = 0; renderStarAtAge(0);
+        });
+    });
+
+    document.getElementById('btn-cross').addEventListener('click', (e) => {
+        isCrossSection = !isCrossSection; e.target.classList.toggle('active');
+        new TWEEN.Tween(clipPlane).to({constant: isCrossSection ? 0 : 1000}, 1200).easing(TWEEN.Easing.Cubic.InOut).start();
+        document.getElementById('layer-legend').style.opacity = isCrossSection ? '1' : '0';
+        document.getElementById('section-helper').classList.toggle('active', isCrossSection);
+    });
+
+    const slider = document.getElementById('age-slider');
+    slider.addEventListener('input', (e) => { if(currentTween) currentTween.stop(); timeControl.age = parseFloat(e.target.value); renderStarAtAge(timeControl.age); });
+
+    function selectStageButton(index) {
+        if(currentTween) currentTween.stop(); const targetAge = timelineData[index].age;
+        const sheet = document.getElementById('bottom-sheet'); if(sheet.classList.contains('collapsed')) sheet.classList.remove('collapsed');
+        currentTween = new TWEEN.Tween(timeControl).to({ age: targetAge }, 2000).easing(TWEEN.Easing.Cubic.InOut).onUpdate(() => { slider.value = timeControl.age; renderStarAtAge(timeControl.age); }).start();
+    }
+
+    const sheet = document.getElementById('bottom-sheet'), dragArea = document.getElementById('drag-area'); let isDraggingSheet = false, sheetStartY = 0;
+    function handleDragStart(y) { isDraggingSheet = true; sheetStartY = y; sheet.style.transition = 'none'; }
+    function handleDragMove(y) { if (!isDraggingSheet) return; let d = y - sheetStartY; if(d < 0 && sheet.classList.contains('collapsed')) sheet.style.transform = `translateY(calc(100% - 110px + ${d}px))`; else if (d > 0 && !sheet.classList.contains('collapsed')) sheet.style.transform = `translateY(${d}px)`; }
+    function handleDragEnd(y) { if (!isDraggingSheet) return; isDraggingSheet = false; sheet.style.transition = 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)'; sheet.style.transform = ''; let d = y - sheetStartY; if(Math.abs(d) < 10) sheet.classList.toggle('collapsed'); else { if (sheet.classList.contains('collapsed') && d < -40) sheet.classList.remove('collapsed'); else if (!sheet.classList.contains('collapsed') && d > 40) sheet.classList.add('collapsed'); } }
+    dragArea.addEventListener('touchstart', (e) => handleDragStart(e.touches[0].clientY), {passive: true}); window.addEventListener('touchmove', (e) => handleDragMove(e.touches[0].clientY), {passive: true}); window.addEventListener('touchend', (e) => handleDragEnd(e.changedTouches[0].clientY));
+    dragArea.addEventListener('mousedown', (e) => handleDragStart(e.clientY)); window.addEventListener('mousemove', (e) => handleDragMove(e.clientY)); window.addEventListener('mouseup', (e) => handleDragEnd(e.clientY));
+
+    buildStageButtons(); renderStarAtAge(4.6);
+
+    const clock = new THREE.Clock();
+    function animate() {
+        requestAnimationFrame(animate); TWEEN.update(); const time = clock.getElapsedTime();
+        
+        if(starGroup.visible) { 
+            const pulse = currentGlowScale + Math.sin(time * 2.5) * 0.15; coronaSprite.scale.set(baseRadius * pulse, baseRadius * pulse, 1); 
+            starGroup.rotation.y = time * 0.05; 
+            coreMat.uniforms.time.value = time; atmosMat.uniforms.time.value = time; 
+        }
+        
+        if(pulsarGroup.visible) { 
+            pulsarGroup.rotation.y = time * 8.0; 
+            pulsarGroup.rotation.z = Math.sin(time * 1.5) * 0.15; 
+            
+            nsWire.rotation.x = time * -12.0; 
+            nsWire.rotation.y = time * 15.0;
+            
+            const ringScale = 1.0 + Math.sin(time * 20.0) * 0.08;
+            nsRing.scale.set(ringScale, ringScale, ringScale); 
+            nsRing.material.opacity = 0.4 + Math.sin(time * 30.0) * 0.2; 
+            magneticRings.forEach((ring, index) => {
+                ring.rotation.y = time * (1.5 + index * 0.8);
+                ring.rotation.x = Math.PI / 2 + Math.sin(time * 1.2 + index) * 0.12;
+                ring.material.opacity = 0.3 + Math.sin(time * 5.0 + index) * 0.12;
+            });
+            beamMat.opacity = 0.09 + Math.sin(time * 8.0) * 0.03;
+            
+            jetMat.uniforms.time.value = time; 
+        }
+        
+        if(blackHoleGroup.visible) {
+            diskMat.uniforms.time.value = time;
+            diskMesh.rotation.z = time * 0.35;
+            diskOuterGlow.rotation.z = -time * 0.18;
+            photonSphere.rotation.z = time * 0.5;
+            blackHoleGlow.material.opacity = 0.25 + Math.sin(time * 3.0) * 0.08;
+        }
+        controls.update(); renderer.render(scene, camera);
+    }
+    
+    window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    animate();
+</script>
+</body>
+</html>

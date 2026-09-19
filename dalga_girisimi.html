@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="wi_page_title">Gelişmiş WebGL Dalga Laboratuvarı</title>
+    <style>
+        :root {
+            --bg-color: #030407;
+            --card-bg: #121623;
+            --accent-cyan: #00f2fe;
+            --accent-orange: #ff7e00;
+            --accent-green: #00ff88;
+            --accent-red: #ff3b3b;
+            --accent-purple: #b05fff;
+            --text-main: #f8fafc;
+            --text-muted: #cbd5e1;
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg-color); font-family: 'Segoe UI', system-ui, sans-serif;
+            color: var(--text-main); overflow: hidden;
+            user-select: none;
+        }
+
+        #canvas-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh; z-index: 0;
+            touch-action: none;
+        }
+
+        #glcanvas, #uiCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #uiCanvas { pointer-events: none; }
+
+        /* Sol Üst Geri Butonu */
+        .back-btn {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(18, 22, 35, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            transition: transform 0.2s, background 0.2s;
+            touch-action: manipulation;
+        }
+        .back-btn:active {
+            transform: scale(0.92);
+            background: rgba(30, 38, 58, 0.95);
+        }
+
+        /* Ana Ekran Onay Modalı */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-box {
+            background: #101622;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 24px 20px 20px 20px;
+            width: 85%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            transform: scale(0.9);
+            transition: transform 0.25s ease;
+        }
+        .modal-overlay.active .modal-box {
+            transform: scale(1);
+        }
+        .modal-title {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        .modal-text {
+            margin: 0 0 24px 0;
+            font-size: 13.5px;
+            color: #94a3b8;
+            line-height: 1.4;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            touch-action: manipulation;
+        }
+        .modal-btn:active {
+            transform: scale(0.96);
+        }
+        .modal-btn.cancel {
+            background: #232a3b;
+            color: #ffffff;
+        }
+        .modal-btn.confirm {
+            background: #29b6f6;
+            color: #051329;
+        }
+
+        /* Kaydırılabilir İçerik Alanı */
+        #scroll-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100vh;
+            overflow-y: auto; overflow-x: hidden; z-index: 10;
+            pointer-events: none; scroll-behavior: smooth;
+        }
+
+        .spacer { height: 55vh; pointer-events: none; }
+
+        .content-wrapper {
+            background: linear-gradient(180deg, transparent 0%, rgba(3,4,7,0.9) 10%, var(--bg-color) 100%);
+            padding: 20px; pointer-events: auto; min-height: 50vh; display: flex; flex-direction: column; gap: 20px;
+            padding-bottom: 60px;
+        }
+
+        /* Kart Tasarımları */
+        .card {
+            background: var(--card-bg); border-radius: 16px; padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6); border-left: 4px solid var(--accent-cyan);
+            display: flex; flex-direction: column; gap: 15px;
+        }
+        .card.orange { border-left-color: var(--accent-orange); }
+        .card.red { border-left-color: var(--accent-red); }
+        .card.purple { border-left-color: var(--accent-purple); }
+
+        .card-title {
+            font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--accent-cyan); margin: 0; display: flex; align-items: center; gap: 8px;
+        }
+        .card.orange .card-title { color: var(--accent-orange); }
+        .card.red .card-title { color: var(--accent-red); }
+        .card.purple .card-title { color: var(--accent-purple); }
+
+        .card-text { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin: 0; }
+        .card-text strong { color: var(--text-main); }
+        .formula { background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 6px; font-family: monospace; color: var(--accent-cyan); }
+
+        /* Kontrol Elemanları */
+        .control-group { display: flex; flex-direction: column; gap: 8px; }
+        .label-val { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; }
+        
+        input[type="range"] {
+            width: 100%; height: 6px; background: #2a3143; border-radius: 4px;
+            outline: none; -webkit-appearance: none; cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+            background: var(--accent-cyan); cursor: pointer; box-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        .mode-toggle { display: flex; gap: 10px; margin-bottom: 5px; }
+        .mode-btn {
+            flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold;
+            background: #2a3143; color: var(--text-muted); cursor: pointer; transition: 0.3s;
+        }
+        .mode-btn.active { background: var(--accent-green); color: #000; box-shadow: 0 0 15px rgba(0, 255, 136, 0.4); }
+
+        /* Ölçüm (Probe) Ekranı */
+        #probe-card {
+            position: fixed; top: 70px; left: 15px; background: rgba(10, 14, 25, 0.9);
+            padding: 15px; border-radius: 12px; border-left: 4px solid var(--accent-green);
+            font-size: 13px; font-family: monospace; line-height: 1.6; color: #fff;
+            z-index: 20; display: none; box-shadow: 0 5px 20px rgba(0,0,0,0.8);
+            pointer-events: none; white-space: pre-wrap;
+        }
+        #probe-card strong { color: var(--accent-cyan); }
+    </style>
+</head>
+<body>
+
+    <button id="btn-back" class="back-btn" aria-label="Geri">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+    </button>
+
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title" data-i18n="modal_exit_title">Ana Ekrana Dön</h3>
+            <p class="modal-text" data-i18n="modal_exit_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-actions">
+                <button id="modal-cancel" class="modal-btn cancel" data-i18n="modal_cancel">İptal</button>
+                <button id="modal-confirm" class="modal-btn confirm" data-i18n="modal_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="glcanvas"></canvas>
+        <canvas id="uiCanvas"></canvas>
+    </div>
+
+    <div id="probe-card"></div>
+
+    <div id="scroll-container">
+        <div class="spacer"></div>
+        
+        <div class="content-wrapper">
+            
+            <div class="card">
+                <h2 class="card-title" data-i18n="wi_controls_title">🎛️ Laboratuvar Kontrolleri</h2>
+                <div class="mode-toggle">
+                    <button class="mode-btn active" id="btn-move" data-i18n="wi_btn_move">Noktaları Taşı</button>
+                    <button class="mode-btn" id="btn-measure" data-i18n="wi_btn_measure">Ölçüm Modu (Prob)</button>
+                </div>
+                <div class="control-group" style="margin-top: 10px;">
+                    <div class="label-val"><span data-i18n="wi_lbl_wavelength">Dalga Boyu (λ)</span><span id="val-wave" style="color: var(--accent-cyan);">60 px</span></div>
+                    <input type="range" id="sl-wave" min="20" max="150" step="1" value="60">
+                </div>
+                <div class="control-group">
+                    <div class="label-val"><span data-i18n="wi_lbl_amplitude">Genlik (Güç)</span><span id="val-amp" style="color: var(--accent-cyan);">1.0</span></div>
+                    <input type="range" id="sl-amp" min="0.1" max="2.0" step="0.1" value="1.0">
+                </div>
+                <div class="control-group">
+                    <div class="label-val"><span data-i18n="wi_lbl_phase">Faz Farkı (Δφ)</span><span id="val-phase" style="color: var(--accent-orange);">0°</span></div>
+                    <input type="range" id="sl-phase" min="0" max="360" step="1" value="0">
+                </div>
+            </div>
+
+            <div class="card orange">
+                <h2 class="card-title" data-i18n="wi_card1_title">🌞 Yapıcı Girişim (Dalga Katarı)</h2>
+                <p class="card-text" data-i18n="wi_card1_desc1">
+                    Simülasyondaki <strong>en parlak (turuncu)</strong> veya <strong>en derin (lacivert)</strong> alanlardır. İki farklı kaynaktan çıkan dalgaların tepeleri (veya çukurları) tam bu noktalarda aynı anda karşılaşır. 
+                </p>
+                <p class="card-text" data-i18n="wi_card1_desc2">
+                    Tıpkı iki kişinin aynı anda aynı yöne itmesi gibi, dalgalar burada güçlerini birleştirir ve <strong>maksimum sarsıntıyı</strong> yaratır. Ölçüm modunda bu bölgeyi yakaladığınızda, yolların farkının dalga boyunun tam katı ($\Delta L = n\lambda$) olduğunu göreceksiniz.
+                </p>
+            </div>
+
+            <div class="card red">
+                <h2 class="card-title" data-i18n="wi_card2_title">🌑 Yıkıcı Girişim (Düğüm Çizgisi)</h2>
+                <p class="card-text" data-i18n="wi_card2_desc1">
+                    Ekrandaki durgun, <strong>camgöbeği (mavi-yeşil) renkteki düz çizgilerdir.</strong> Bir dalganın tepesi ile diğerinin çukuru tam burada çarpışır. 
+                </p>
+                <p class="card-text" data-i18n="wi_card2_desc2">
+                    Biri suyu yukarı iterken diğeri aynı şiddetle aşağı çektiği için bu noktalar <strong>birbirini yok eder (sıfırlar)</strong>. Burada su adeta hiç hareket etmiyormuş gibi görünür. Bu duruma denk gelmek için yol farkı buçuklu katlar olmalıdır: <span class="formula">$\Delta L = (n + \frac{1}{2})\lambda$</span>. Gürültü engelleyici (Noise Cancelling) kulaklıklar tam olarak bu fizik kuralıyla çalışır!
+                </p>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title" data-i18n="wi_card3_title">🌗 Ara Bölge (Geçiş Fazı)</h2>
+                <p class="card-text" data-i18n="wi_card3_desc">
+                    Ne tam bir zafer, ne de tam bir yok oluş! İki dalganın tepe veya çukurlarının <strong>yarım yamalak</strong> çakıştığı yerlerdir. Simülasyonda renklerin yavaşça diğerine dönüştüğü geçiş alanlarıdır. Sular hafifçe dalgalanır ama maksimum güce asla ulaşamaz.
+                </p>
+            </div>
+
+            <div class="card purple">
+                <h2 class="card-title" data-i18n="wi_card4_title">⏱️ Faz Farkı Nedir?</h2>
+                <p class="card-text" data-i18n="wi_card4_desc1">
+                    Yukarıdaki <strong>Faz Farkı</strong> ayarıyla oynayın. İki kaynağın aynı anda değil de, <strong>birinin diğerinden biraz daha gecikmeli</strong> olarak dalga üretmesini sağlarsınız. 
+                </p>
+                <p class="card-text" data-i18n="wi_card4_desc2">
+                    Zamanlama değiştiği anda bütün o kusursuz simetrik desenin sağa veya sola doğru nasıl "kaydığını" izleyin. Çünkü zamanlama bozulduğunda, dalgaların havada çarpışma noktaları da değişir.
+                </p>
+            </div>
+
+        </div>
+    </div>
+
+<script src="lang.js"></script>
+<script>
+    // --- WEBGL SHADER KODLARI ---
+    const vertexShaderSrc = `
+        attribute vec2 a_position;
+        void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
+    `;
+
+    const fragmentShaderSrc = `
+        precision highp float;
+        uniform vec2 u_resolution;
+        uniform float u_time;
+        uniform vec2 u_s1;
+        uniform vec2 u_s2;
+        uniform float u_wavelength;
+        uniform float u_amplitude;
+        uniform float u_phase;
+        
+        vec3 getColor(float t) {
+            if(t < -0.5) return mix(vec3(0.02, 0.05, 0.2), vec3(0.0, 0.3, 0.8), (t + 1.0) * 2.0);
+            if(t < 0.0) return mix(vec3(0.0, 0.3, 0.8), vec3(0.0, 0.8, 0.8), (t + 0.5) * 2.0);
+            if(t < 0.5) return mix(vec3(0.0, 0.8, 0.8), vec3(1.0, 0.8, 0.0), t * 2.0);
+            return mix(vec3(1.0, 0.8, 0.0), vec3(1.0, 0.3, 0.0), (t - 0.5) * 2.0);
+        }
+
+        float getWaveHeight(vec2 p) {
+            float d1 = distance(p, u_s1);
+            float d2 = distance(p, u_s2);
+            float k = 6.28318530718 / u_wavelength; 
+            
+            float atten1 = 1.0 / sqrt(1.0 + d1 * 0.02);
+            float atten2 = 1.0 / sqrt(1.0 + d2 * 0.02);
+
+            float y1 = u_amplitude * atten1 * sin(k * d1 - u_time);
+            float y2 = u_amplitude * atten2 * sin(k * d2 - u_time + u_phase);
+            
+            return y1 + y2;
+        }
+
+        void main() {
+            vec2 uv = vec2(gl_FragCoord.x, u_resolution.y - gl_FragCoord.y);
+            float h = getWaveHeight(uv);
+            
+            float eps = 1.0;
+            float hx = getWaveHeight(uv + vec2(eps, 0.0));
+            float hy = getWaveHeight(uv + vec2(0.0, eps));
+            vec3 normal = normalize(vec3(h - hx, h - hy, eps));
+            
+            vec3 lightDir = normalize(vec3(1.0, 1.0, 1.5));
+            float diffuse = max(dot(normal, lightDir), 0.0);
+            float ambient = 0.4;
+            float specular = pow(max(dot(normal, lightDir), 0.0), 32.0) * 0.3;
+
+            float normalizedHeight = clamp(h / (2.0 * u_amplitude), -1.0, 1.0);
+            vec3 baseColor = getColor(normalizedHeight);
+            
+            vec3 finalColor = baseColor * (diffuse + ambient) + vec3(specular);
+            gl_FragColor = vec4(finalColor, 1.0);
+        }
+    `;
+
+    // --- SİSTEM DEĞİŞKENLERİ ---
+    let gl, program, uniforms = {};
+    const glCanvas = document.getElementById('glcanvas');
+    const uiCanvas = document.getElementById('uiCanvas');
+    const ctx = uiCanvas.getContext('2d');
+
+    let width, height;
+    let s1 = { x: 0, y: 0 }, s2 = { x: 0, y: 0 };
+    let probe = { x: 0, y: 0, active: false };
+    
+    let wavelength = 60.0;
+    let amplitude = 1.0;
+    let phaseDiff = 0.0; 
+    let globalTime = 0.0;
+    let lastFrameTime = performance.now();
+
+    let mode = 'MOVE'; 
+    let draggingObj = null;
+
+    // --- WEBGL KURULUMU ---
+    function initWebGL() {
+        gl = glCanvas.getContext('webgl');
+        function compileShader(type, src) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, src);
+            gl.compileShader(shader);
+            return shader;
+        }
+
+        program = gl.createProgram();
+        gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexShaderSrc));
+        gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentShaderSrc));
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+        const posAttr = gl.getAttribLocation(program, "a_position");
+        gl.enableVertexAttribArray(posAttr);
+        gl.vertexAttribPointer(posAttr, 2, gl.FLOAT, false, 0, 0);
+
+        uniforms.resolution = gl.getUniformLocation(program, "u_resolution");
+        uniforms.time = gl.getUniformLocation(program, "u_time");
+        uniforms.s1 = gl.getUniformLocation(program, "u_s1");
+        uniforms.s2 = gl.getUniformLocation(program, "u_s2");
+        uniforms.wavelength = gl.getUniformLocation(program, "u_wavelength");
+        uniforms.amplitude = gl.getUniformLocation(program, "u_amplitude");
+        uniforms.phase = gl.getUniformLocation(program, "u_phase");
+    }
+
+    function resize() {
+        width = window.innerWidth; height = window.innerHeight;
+        glCanvas.width = width; glCanvas.height = height;
+        uiCanvas.width = width; uiCanvas.height = height;
+        gl.viewport(0, 0, width, height);
+
+        if(s1.x === 0) {
+            s1 = { x: width * 0.35, y: height * 0.3 };
+            s2 = { x: width * 0.65, y: height * 0.3 };
+            probe = { x: width * 0.5, y: height * 0.15, active: false };
+        }
+    }
+
+    // --- ARAYÜZ (PROB VE ÇİZGİLER) ÇİZİMİ ---
+    function drawUI() {
+        ctx.clearRect(0, 0, width, height);
+
+        ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 15; ctx.shadowColor = '#00f2fe';
+        ctx.beginPath(); ctx.arc(s1.x, s1.y, 8, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(s2.x, s2.y, 8, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0; 
+
+        if (mode === 'MEASURE' && probe.active) {
+            ctx.beginPath(); ctx.moveTo(s1.x, s1.y); ctx.lineTo(probe.x, probe.y);
+            ctx.strokeStyle = 'rgba(0, 242, 254, 0.7)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 2; ctx.stroke();
+            
+            ctx.beginPath(); ctx.moveTo(s2.x, s2.y); ctx.lineTo(probe.x, probe.y);
+            ctx.strokeStyle = 'rgba(255, 126, 0, 0.7)'; ctx.stroke(); ctx.setLineDash([]);
+
+            ctx.beginPath(); ctx.arc(probe.x, probe.y, 10, 0, Math.PI*2);
+            ctx.fillStyle = '#00ff88'; ctx.fill();
+            ctx.lineWidth = 3; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+        }
+    }
+
+    // --- FİZİK HESAPLAMALARI (ÖLÇÜM) ---
+    function updateProbeData() {
+        if(mode !== 'MEASURE') return;
+        
+        const d1 = Math.hypot(probe.x - s1.x, probe.y - s1.y);
+        const d2 = Math.hypot(probe.x - s2.x, probe.y - s2.y);
+        const deltaL = Math.abs(d1 - d2);
+        
+        const ratio = deltaL / wavelength;
+        const phaseShift = (phaseDiff / (Math.PI * 2)); 
+        const totalRatio = ratio - phaseShift;
+        
+        const nearestInt = Math.round(totalRatio);
+        const remainder = Math.abs(totalRatio - nearestInt);
+        
+        let stateText = "", color = "";
+        if (remainder < 0.15) {
+            const template = typeof t === 'function' ? t('wi_state_constructive') : 'YAPICI GİRİŞİM (Katar n={n})';
+            stateText = template.replace('{n}', nearestInt);
+            color = "#ff7e00"; 
+        } else if (Math.abs(remainder - 0.5) < 0.15) {
+            const template = typeof t === 'function' ? t('wi_state_destructive') : 'YIKICI GİRİŞİM (Düğüm n={n})';
+            stateText = template.replace('{n}', Math.floor(totalRatio) + 1);
+            color = "#00f2fe"; 
+        } else {
+            stateText = typeof t === 'function' ? t('wi_state_intermediate') : "ARA BÖLGE (Geçiş)";
+            color = "#cbd5e1";
+        }
+
+        const lblS1 = typeof t === 'function' ? t('wi_probe_s1') : "S1 Uzaklık";
+        const lblS2 = typeof t === 'function' ? t('wi_probe_s2') : "S2 Uzaklık";
+        const lblPathDiff = typeof t === 'function' ? t('wi_probe_path_diff') : "Yol Farkı";
+        const lblRatio = typeof t === 'function' ? t('wi_probe_ratio') : "Oran (ΔL/λ)";
+        const lblState = typeof t === 'function' ? t('wi_probe_state') : "Durum";
+
+        document.getElementById('probe-card').innerHTML = `
+${lblS1} : <strong>${d1.toFixed(1)} px</strong>
+${lblS2} : <strong>${d2.toFixed(1)} px</strong>
+${lblPathDiff}  : <strong>ΔL = ${deltaL.toFixed(1)} px</strong>
+${lblRatio}: <strong>${ratio.toFixed(2)}</strong>
+${lblState}      : <span style="color:${color}; font-weight:bold; font-size:14px;">${stateText}</span>`;
+    }
+
+    // --- RENDER DÖNGÜSÜ ---
+    function loop(now) {
+        let dt = (now - lastFrameTime) * 0.001; 
+        lastFrameTime = now;
+
+        if (isNaN(dt) || dt < 0) dt = 0;
+        if (dt > 0.1) dt = 0.1;
+
+        globalTime += dt * (Math.PI * 2) * 1.5;
+        globalTime = globalTime % (Math.PI * 2);
+
+        gl.uniform2f(uniforms.resolution, width, height);
+        gl.uniform1f(uniforms.time, globalTime);
+        gl.uniform2f(uniforms.s1, s1.x, s1.y);
+        gl.uniform2f(uniforms.s2, s2.x, s2.y);
+        gl.uniform1f(uniforms.wavelength, wavelength);
+        gl.uniform1f(uniforms.amplitude, amplitude);
+        gl.uniform1f(uniforms.phase, phaseDiff);
+
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        drawUI();
+        if (probe.active) updateProbeData();
+        requestAnimationFrame(loop);
+    }
+
+    // --- GERİ BUTONU VE MODAL KONTROLLERİ ---
+    const btnBack = document.getElementById('btn-back');
+    const confirmModal = document.getElementById('confirm-modal');
+    const modalCancel = document.getElementById('modal-cancel');
+    const modalConfirm = document.getElementById('modal-confirm');
+
+    btnBack.addEventListener('click', () => {
+        confirmModal.classList.add('active');
+    });
+
+    modalCancel.addEventListener('click', () => {
+        confirmModal.classList.remove('active');
+    });
+
+    modalConfirm.addEventListener('click', () => {
+        window.location.href = 'index.html';
+    });
+
+    // --- KONTROLLER (UI VE ETKİLEŞİM) ---
+    document.getElementById('sl-wave').addEventListener('input', e => { wavelength = parseFloat(e.target.value); document.getElementById('val-wave').textContent = e.target.value + " px"; });
+    document.getElementById('sl-amp').addEventListener('input', e => { amplitude = parseFloat(e.target.value); document.getElementById('val-amp').textContent = e.target.value; });
+    document.getElementById('sl-phase').addEventListener('input', e => { 
+        let deg = parseFloat(e.target.value); phaseDiff = deg * (Math.PI / 180); 
+        document.getElementById('val-phase').textContent = deg + "°"; 
+    });
+
+    const btnMove = document.getElementById('btn-move'), btnMeasure = document.getElementById('btn-measure');
+    const probeCard = document.getElementById('probe-card');
+
+    btnMove.addEventListener('click', () => {
+        mode = 'MOVE'; btnMove.classList.add('active'); btnMeasure.classList.remove('active');
+        probeCard.style.display = 'none'; probe.active = false;
+    });
+
+    btnMeasure.addEventListener('click', () => {
+        mode = 'MEASURE'; btnMeasure.classList.add('active'); btnMove.classList.remove('active');
+        probeCard.style.display = 'block'; probe.active = true;
+    });
+
+    const canvasContainer = document.getElementById('canvas-container');
+
+    function getEventPos(e) { return e.touches ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY }; }
+
+    function onPointerDown(e) {
+        if (e.target.closest('.content-wrapper') || e.target.closest('.back-btn') || e.target.closest('.modal-overlay')) return;
+        
+        const pos = getEventPos(e);
+        if (mode === 'MOVE') {
+            if (Math.hypot(pos.x - s1.x, pos.y - s1.y) < 40) draggingObj = s1;
+            else if (Math.hypot(pos.x - s2.x, pos.y - s2.y) < 40) draggingObj = s2;
+        } else if (mode === 'MEASURE') {
+            probe.x = pos.x; probe.y = pos.y; draggingObj = probe;
+        }
+    }
+
+    function onPointerMove(e) {
+        if (!draggingObj) return;
+        const pos = getEventPos(e); draggingObj.x = pos.x; draggingObj.y = pos.y;
+    }
+
+    function onPointerUp() { draggingObj = null; }
+
+    canvasContainer.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+    
+    canvasContainer.addEventListener('touchstart', onPointerDown, {passive: false});
+    window.addEventListener('touchmove', (e) => {
+        if(draggingObj) { e.preventDefault(); onPointerMove(e); }
+    }, {passive: false});
+    window.addEventListener('touchend', onPointerUp);
+
+    window.addEventListener('resize', resize);
+    window.addEventListener('load', () => { 
+        initWebGL(); 
+        resize(); 
+        if (typeof updatePageLanguage === 'function') {
+            updatePageLanguage();
+        }
+        requestAnimationFrame(loop); 
+    });
+</script>
+</body>
+</html>

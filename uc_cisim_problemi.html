@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="tbp_title">Üç Cisim Problemi</title>
+    <script src="lang.js"></script>
+    <style>
+        :root {
+            --bg-color: #030305;
+            --surface-color: #0d0d14;
+            --surface-light: #161622;
+            --text-main: #f0f0f5;
+            --text-muted: #8a8a9e;
+            --c-cyan: #00e5ff;
+            --c-pink: #ff007f;
+            --c-yellow: #ffea00;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 16px;
+        }
+
+        /* Yuvarlak Geri Dön / Ana Ekran Butonu */
+        .home-btn {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1000;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(13, 13, 20, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .home-btn:hover {
+            background: rgba(22, 22, 34, 0.95);
+            transform: scale(1.05);
+            border-color: rgba(0, 229, 255, 0.4);
+        }
+
+        .home-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal Onay Penceresi */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--surface-color);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 28px 24px 24px 24px;
+            width: 88%;
+            max-width: 340px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.9);
+            transform: scale(0.92);
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.2px;
+        }
+
+        .modal-desc {
+            font-size: 13.5px;
+            color: var(--text-muted);
+            margin: 0 0 24px 0;
+            line-height: 1.4;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn-cancel {
+            background: var(--surface-light);
+            color: var(--text-main);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .modal-btn-cancel:hover {
+            background: #222233;
+        }
+
+        .modal-btn-cancel:active {
+            transform: scale(0.96);
+        }
+
+        .modal-btn-confirm {
+            background: rgba(255, 0, 127, 0.85);
+            color: #ffffff;
+        }
+
+        .modal-btn-confirm:hover {
+            background: var(--c-pink);
+        }
+
+        .modal-btn-confirm:active {
+            transform: scale(0.96);
+        }
+
+        .header {
+            margin-top: 20px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        h1 { font-size: 22px; font-weight: 800; margin: 0 0 4px 0; color: #fff; letter-spacing: 0.5px; }
+        .subtitle { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+        /* Simülasyon Ekranı */
+        .visual-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: radial-gradient(circle at center, #0a0a12 0%, #000000 100%);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 40px rgba(0,229,255,0.03);
+        }
+
+        canvas { width: 100%; height: 100%; display: block; }
+
+        .status-display {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        /* Kontrol Paneli */
+        .control-block {
+            background-color: var(--surface-color);
+            padding: 18px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-row { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 12px; 
+            margin-bottom: 12px;
+        }
+
+        .btn-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .action-btn {
+            background: var(--surface-light);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 14px 8px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+
+        .action-btn.primary { background: rgba(0, 229, 255, 0.1); border-color: var(--c-cyan); color: var(--c-cyan); }
+        .action-btn.warning { background: rgba(255, 234, 0, 0.1); border-color: var(--c-yellow); color: var(--c-yellow); }
+        .action-btn.secondary { background: rgba(255, 0, 127, 0.1); border-color: var(--c-pink); color: var(--c-pink); }
+        .action-btn:active { transform: scale(0.97); background: #fff; color: #000; }
+
+        /* Bilimsel Uygulama Kartları */
+        .explanation-section { display: flex; flex-direction: column; gap: 14px; padding-bottom: 20px; }
+        .info-card { background-color: var(--surface-color); border-radius: 12px; padding: 16px; border-left: 4px solid var(--c-cyan); }
+        .info-card.pink { border-left-color: var(--c-pink); }
+        .info-card.yellow { border-left-color: var(--c-yellow); }
+        .info-card h3 { margin: 0 0 6px 0; font-size: 13px; color: #fff; text-transform: uppercase; letter-spacing: 0.8px; }
+        .info-card p { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+        .info-card strong { color: #fff; }
+    </style>
+</head>
+<body>
+
+    <!-- Yuvarlak Ok Iconlu Ana Ekrana Dön Butonu -->
+    <button class="home-btn" id="btnHome" aria-label="Ana Ekrana Dön" data-i18n-aria-label="tbp_back">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+    </button>
+
+    <!-- Modal Onay Penceresi -->
+    <div class="modal-overlay" id="homeModal">
+        <div class="modal-card">
+            <h3 class="modal-title" data-i18n="tbp_modal_title">Ana Ekrana Dön</h3>
+            <p class="modal-desc" data-i18n="tbp_modal_desc">Ana ekrana dönmek istediğinize emin misiniz?</p>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" id="btnModalCancel" data-i18n="tbp_cancel">İptal</button>
+                <button class="modal-btn modal-btn-confirm" id="btnModalConfirm" data-i18n="tbp_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="header">
+        <h1 data-i18n="tbp_title">Üç Cisim Problemi</h1>
+        <p class="subtitle" data-i18n="tbp_subtitle">Kütleçekimsel Yörünge Laboratuvarı</p>
+    </div>
+
+    <div class="visual-container">
+        <canvas id="orbitCanvas"></canvas>
+        <div class="status-display" id="modeStatus" data-i18n="tbp_status_default">KAOTİK MOD</div>
+    </div>
+
+    <!-- Kontroller -->
+    <div class="control-block">
+        <div class="btn-row">
+            <button class="action-btn primary" id="btnChaosBarrier" data-i18n="tbp_btn_bounded">🛡️ Kaos (Bariyerli)</button>
+            <button class="action-btn warning" id="btnChaosOpen" data-i18n="tbp_btn_unbounded">🌌 Kaos (Bariyersiz)</button>
+        </div>
+        <div class="btn-row">
+            <button class="action-btn secondary" id="btnFigure8" data-i18n="tbp_btn_figure8">♾️ Sonsuzluk Yörüngesi</button>
+            <button class="action-btn" id="btnClear" data-i18n="tbp_btn_clear">İzleri Temizle</button>
+        </div>
+    </div>
+
+    <!-- Uygulama Bilgi Kartları -->
+    <div class="explanation-section">
+        <div class="info-card cyan">
+            <h3 data-i18n="tbp_sec1_title">Üç Cisim Problemi (Three-Body Problem)</h3>
+            <p data-i18n="tbp_sec1_desc">İki gök cisminin, ideal koşullarda, hareketi kapalı biçimde analitik olarak çözülebilir. Ancak <strong>üçüncü bir kütle</strong> eklendiğinde genel durumda kapalı biçimli bir çözüm yoktur; hareket sayısal yöntemlerle hesaplanır. Sistem deterministiktir ve bazı başlangıç koşullarında kaotik davranabilir; başlangıç konumu veya hızındaki çok küçük farklar, özellikle uzun zamanlarda, belirgin biçimde farklı yörüngelere yol açabilir.</p>
+        </div>
+
+        <div class="info-card yellow">
+            <h3 data-i18n="tbp_sec2_title">Kütleçekimsel Fırlatılma Ve Bariyer Seçeneği</h3>
+            <p data-i18n="tbp_sec2_desc">Kaotik davranış, başlangıç koşullarına duyarlılık demektir; her kaotik sistem zorunlu olarak kararsız değildir. Üç cisim birbirine yaklaştığında hızlar artabilir ve etkileşim sonucunda cisimlerden biri bağlı olmayan bir yörüngeye geçerek <strong>uzaklaşabilir (fırlatılma)</strong>; bu her başlangıç koşulunda gerçekleşmez. <strong>"Bariyersiz"</strong> seçeneğinde bu olasılığı gözlemleyebilirsiniz. <strong>"Bariyerli"</strong> seçeneğinde ise simülasyona eklenmiş yapay, merkeze doğru bir sınırlayıcı kuvvet cisimlerin ekranda kalmasına yardımcı olur; bu, gerçek bir kütleçekim alanı değildir.</p>
+        </div>
+
+        <div class="info-card pink">
+            <h3 data-i18n="tbp_sec3_title">Sonsuzluk Yörüngesi Ve Gerçeklik İmkansızlığı</h3>
+            <p data-i18n="tbp_sec3_desc">Üç eşit kütlenin ortak kütle merkezinin çevresinde <strong>"8" şekli</strong> izlediği, periyodik özel çözümdür. Bu çözümün varlığı matematiksel olarak gösterilmiştir; ancak onu elde etmek için başlangıç konumları ve hızların çok hassas biçimde ayarlanması gerekir. Gerçek bir sistemde küçük sapmalar, sayısal hatalar ve dış etkiler yörüngenin ideal şekilden zamanla uzaklaşmasına neden olabilir.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- ANA EKRANA DÖN & MODAL MANTIĞI ---
+        const btnHome = document.getElementById('btnHome');
+        const homeModal = document.getElementById('homeModal');
+        const btnModalCancel = document.getElementById('btnModalCancel');
+        const btnModalConfirm = document.getElementById('btnModalConfirm');
+
+        btnHome.addEventListener('click', () => {
+            homeModal.classList.add('active');
+        });
+
+        btnModalCancel.addEventListener('click', () => {
+            homeModal.classList.remove('active');
+        });
+
+        homeModal.addEventListener('click', (e) => {
+            if (e.target === homeModal) {
+                homeModal.classList.remove('active');
+            }
+        });
+
+        btnModalConfirm.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+
+        // --- SİMÜLASYON KURULUMU ---
+        const canvas = document.getElementById('orbitCanvas');
+        const ctx = canvas.getContext('2d');
+        const modeStatus = document.getElementById('modeStatus');
+
+        let width, height, cx, cy;
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            width = canvas.offsetWidth;
+            height = canvas.offsetHeight;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            cx = width / 2;
+            cy = height / 2;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- FİZİK MOTORU VE DELTA TIME ---
+        const SCALE = 100;
+        let bodies = [];
+        let trailLength = 160;
+        let currentMode = 'chaos-barrier'; 
+        let lastTime = 0;
+
+        function updateModeStatus() {
+            const statusKeys = {
+                'chaos-barrier': 'tbp_status_bounded',
+                'chaos-open': 'tbp_status_unbounded',
+                figure8: 'tbp_status_figure8'
+            };
+            modeStatus.innerText = t(statusKeys[currentMode] || 'tbp_status_default');
+        }
+
+        window.onLanguageChange = updateModeStatus;
+
+        class Body {
+            constructor(x, y, vx, vy, mass, color) {
+                this.x = x; this.y = y;
+                this.vx = vx; this.vy = vy;
+                this.mass = mass; this.color = color;
+                this.trail = [];
+            }
+        }
+
+        function initChaos(hasBarrier) {
+            currentMode = hasBarrier ? 'chaos-barrier' : 'chaos-open';
+
+            if (hasBarrier) {
+                modeStatus.style.color = "var(--c-cyan)";
+            } else {
+                modeStatus.style.color = "var(--c-yellow)";
+            }
+            updateModeStatus();
+            
+            bodies = [
+                new Body(-1.0, 0.3, 0.3, -0.2, 1, '#00e5ff'),
+                new Body(1.0, -0.3, -0.3, 0.2, 1, '#ff007f'),
+                new Body(0.0, 0.8, 0.0, 0.4, 1, '#ffea00')
+            ];
+            correctMomentum();
+        }
+
+        function initFigure8() {
+            currentMode = 'figure8';
+            modeStatus.style.color = "var(--c-pink)";
+            updateModeStatus();
+
+            const x = 0.97000436;
+            const y = -0.24308753;
+            const vx = 0.466203685;
+            const vy = 0.43236573;
+
+            bodies = [
+                new Body(x, y, vx, vy, 1, '#00e5ff'),
+                new Body(-x, -y, vx, vy, 1, '#ff007f'),
+                new Body(0, 0, -2 * vx, -2 * vy, 1, '#ffea00')
+            ];
+        }
+
+        function correctMomentum() {
+            let px = 0, py = 0, totalM = 0;
+            bodies.forEach(b => { px += b.vx * b.mass; py += b.vy * b.mass; totalM += b.mass; });
+            bodies.forEach(b => { b.vx -= px / totalM; b.vy -= py / totalM; });
+        }
+
+        function calculateAccelerations(state) {
+            const accelerations = state.map(() => ({ x: 0, y: 0 }));
+            const soft = currentMode === 'figure8' ? 0 : 0.03;
+
+            for (let i = 0; i < state.length; i++) {
+                for (let j = 0; j < state.length; j++) {
+                    if (i === j) continue;
+
+                    const dx = state[j].x - state[i].x;
+                    const dy = state[j].y - state[i].y;
+                    const distSq = dx * dx + dy * dy;
+                    const dist = Math.sqrt(distSq + soft);
+                    const force = state[j].mass / (distSq + soft);
+                    accelerations[i].x += force * (dx / dist);
+                    accelerations[i].y += force * (dy / dist);
+                }
+
+                
+                if (currentMode === 'chaos-barrier') {
+                    const distanceFromCenter = Math.sqrt(state[i].x ** 2 + state[i].y ** 2);
+                    if (distanceFromCenter > 1.8) {
+                        accelerations[i].x -= state[i].x * 1.5;
+                        accelerations[i].y -= state[i].y * 1.5;
+                    }
+                }
+            }
+
+            return accelerations;
+        }
+
+        function updatePhysics(dtFactor) {
+            const dt = 0.0008;
+            const subSteps = Math.max(1, Math.round(100 * Math.min(dtFactor, 1.5)));
+
+            for (let step = 0; step < subSteps; step++) {
+                const initial = bodies.map(b => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy, mass: b.mass }));
+                const k1a = calculateAccelerations(initial);
+                const halfStep = initial.map((b, i) => ({
+                    x: b.x + b.vx * dt / 2,
+                    y: b.y + b.vy * dt / 2,
+                    vx: b.vx + k1a[i].x * dt / 2,
+                    vy: b.vy + k1a[i].y * dt / 2,
+                    mass: b.mass
+                }));
+                const k2a = calculateAccelerations(halfStep);
+                const secondHalfStep = initial.map((b, i) => ({
+                    x: b.x + halfStep[i].vx * dt / 2,
+                    y: b.y + halfStep[i].vy * dt / 2,
+                    vx: b.vx + k2a[i].x * dt / 2,
+                    vy: b.vy + k2a[i].y * dt / 2,
+                    mass: b.mass
+                }));
+                const k3a = calculateAccelerations(secondHalfStep);
+                const finalStep = initial.map((b, i) => ({
+                    x: b.x + secondHalfStep[i].vx * dt,
+                    y: b.y + secondHalfStep[i].vy * dt,
+                    vx: b.vx + k3a[i].x * dt,
+                    vy: b.vy + k3a[i].y * dt,
+                    mass: b.mass
+                }));
+                const k4a = calculateAccelerations(finalStep);
+
+                bodies.forEach((body, i) => {
+                    body.x += (initial[i].vx + 2 * halfStep[i].vx + 2 * secondHalfStep[i].vx + finalStep[i].vx) * dt / 6;
+                    body.y += (initial[i].vy + 2 * halfStep[i].vy + 2 * secondHalfStep[i].vy + finalStep[i].vy) * dt / 6;
+                    body.vx += (k1a[i].x + 2 * k2a[i].x + 2 * k3a[i].x + k4a[i].x) * dt / 6;
+                    body.vy += (k1a[i].y + 2 * k2a[i].y + 2 * k3a[i].y + k4a[i].y) * dt / 6;
+                });
+            }
+
+            bodies.forEach(b => {
+                b.trail.push({ x: b.x, y: b.y });
+                if (b.trail.length > trailLength) b.trail.shift();
+            });
+        }
+
+        function draw(currentTime) {
+            if (!currentTime) currentTime = performance.now();
+            const deltaSeconds = Math.min((currentTime - lastTime) / 1000, 0.1); 
+            lastTime = currentTime;
+
+            // 60 FPS referanslı dtFactor hesabı
+            const dtFactor = deltaSeconds * 60;
+
+            updatePhysics(dtFactor);
+
+            ctx.fillStyle = 'rgba(3, 3, 5, 0.25)';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.globalCompositeOperation = 'lighter';
+            
+            for (let b of bodies) {
+                if (b.trail.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx + b.trail[0].x * SCALE, cy + b.trail[0].y * SCALE);
+                    for (let i = 1; i < b.trail.length; i++) {
+                        ctx.lineTo(cx + b.trail[i].x * SCALE, cy + b.trail[i].y * SCALE);
+                    }
+                    ctx.strokeStyle = b.color;
+                    ctx.lineWidth = 1.8;
+                    ctx.stroke();
+                }
+            }
+            
+            ctx.globalCompositeOperation = 'source-over';
+
+            for (let b of bodies) {
+                let screenX = cx + b.x * SCALE;
+                let screenY = cy + b.y * SCALE;
+
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 7, 0, Math.PI * 2);
+                ctx.fillStyle = b.color;
+                ctx.globalAlpha = 0.4;
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 3, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.globalAlpha = 1.0;
+                ctx.fill();
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        // --- BUTON ETKİLEŞİMLERİ ---
+        document.getElementById('btnChaosBarrier').addEventListener('click', () => {
+            ctx.fillStyle = '#030305'; ctx.fillRect(0, 0, width, height);
+            initChaos(true);
+        });
+
+        document.getElementById('btnChaosOpen').addEventListener('click', () => {
+            ctx.fillStyle = '#030305'; ctx.fillRect(0, 0, width, height);
+            initChaos(false);
+        });
+
+        document.getElementById('btnFigure8').addEventListener('click', () => {
+            ctx.fillStyle = '#030305'; ctx.fillRect(0, 0, width, height);
+            initFigure8();
+        });
+
+        document.getElementById('btnClear').addEventListener('click', () => {
+            ctx.fillStyle = '#030305'; ctx.fillRect(0, 0, width, height);
+            bodies.forEach(b => b.trail = []);
+        });
+
+        initFigure8();
+        lastTime = performance.now();
+        requestAnimationFrame(draw);
+    </script>
+</body>
+</html>

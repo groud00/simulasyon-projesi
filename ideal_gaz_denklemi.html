@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="ig_page_title">LAB-PV | İdeal Gaz & Kinetik Teorik Laboratuvarı</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+    :root {
+      --bg-dark: #070a11;
+      --panel-bg: rgba(15, 23, 42, 0.75);
+      --panel-border: rgba(56, 189, 248, 0.2);
+      --panel-border-glow: rgba(56, 189, 248, 0.4);
+      --accent-cyan: #38bdf8;
+      --accent-blue: #3b82f6;
+      --accent-emerald: #34d399;
+      --accent-amber: #fbbf24;
+      --accent-rose: #f43f5e;
+      --accent-purple: #a855f7;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 85% 90%, rgba(168, 85, 247, 0.05) 0%, transparent 40%),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+    }
+
+    header {
+      padding: 0.85rem 1.5rem;
+      background: rgba(11, 17, 32, 0.85);
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      backdrop-filter: blur(16px);
+      z-index: 20;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .btn-back {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-family: var(--font-sans);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-back:hover {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: var(--accent-cyan);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
+      transform: translateX(-2px);
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(168, 85, 247, 0.2));
+      border: 1px solid var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+    }
+
+    h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      background: linear-gradient(90deg, #fff, var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .btn-modal {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid var(--panel-border);
+      color: var(--accent-cyan);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-modal:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+      color: #fff;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 1.2rem;
+      padding: 1.2rem;
+      max-width: 1650px;
+      margin: 0 auto;
+      width: 100%;
+      flex: 1;
+    }
+
+    @media (max-width: 1150px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 12px;
+      padding: 1rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--panel-border-glow), transparent);
+    }
+
+    .card-title {
+      font-size: 0.78rem;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title .badge {
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: var(--accent-cyan);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+    }
+
+    .formula-banner {
+      grid-column: 1 / -1;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      padding: 0.75rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .formula-title {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+
+    .formula-eq {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-family: var(--font-mono);
+      font-size: 1.3rem;
+      font-weight: 800;
+    }
+
+    .eq-term {
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .eq-term .sym { color: #fff; }
+    .eq-term .val {
+      font-size: 0.72rem;
+      color: var(--accent-cyan);
+      font-weight: 400;
+      margin-top: 2px;
+    }
+
+    .eq-term.highlight-pulse {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .eq-op { color: var(--text-muted); font-size: 1rem; }
+
+    .viewport-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 500px;
+      position: relative;
+    }
+
+    canvas#simCanvas {
+      width: 100%;
+      height: 500px;
+      background: radial-gradient(circle at center, #0b1120 0%, #050811 100%);
+      border-radius: 8px;
+      display: block;
+    }
+
+    .controls-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+    }
+
+    .control-value {
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+      font-weight: 600;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 5px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      cursor: pointer;
+      box-shadow: 0 0 12px var(--accent-cyan);
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    select {
+      width: 100%;
+      padding: 8px 12px;
+      background: rgba(10, 15, 28, 0.9);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 0.4rem;
+    }
+
+    .btn-preset {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .btn-preset:hover {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: var(--accent-cyan);
+      color: #fff;
+    }
+
+    .metrics-grid {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.85rem;
+    }
+
+    .metric-card {
+      background: rgba(10, 16, 29, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .metric-indicator {
+      position: absolute;
+      top: 12px; right: 12px;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+    }
+
+    .metric-title {
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .metric-value {
+      font-size: 1.35rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .metric-unit {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-left: 3px;
+    }
+
+    .metric-sub {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+      margin-top: 4px;
+    }
+
+    .comparison-container {
+      grid-column: 1 / -1;
+    }
+
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      margin-top: 0.5rem;
+    }
+
+    .comp-table th, .comp-table td {
+      padding: 9px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .comp-table th {
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+    }
+
+    .comp-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .comp-value {
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    .tag-ideal { color: var(--accent-cyan); }
+    .tag-kinetic { color: var(--accent-emerald); }
+    .tag-measured { color: var(--accent-amber); }
+
+    .charts-grid {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-box {
+      height: 230px;
+      width: 100%;
+      position: relative;
+    }
+
+    canvas.chartCanvas {
+      width: 100%;
+      height: 100%;
+      background: rgba(6, 10, 18, 0.85);
+      border-radius: 6px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(12px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .modal-content {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent-cyan);
+      border-radius: 12px;
+      max-width: 800px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 2rem;
+      box-shadow: 0 0 50px rgba(56, 189, 248, 0.2);
+    }
+
+    .modal-content h2 {
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+    }
+
+    .modal-content h3 {
+      color: #fff;
+      margin: 1.2rem 0 0.5rem 0;
+      font-size: 0.95rem;
+    }
+
+    .modal-content p, .modal-content li {
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: var(--text-main);
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-content code {
+      font-family: var(--font-mono);
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--accent-cyan);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .close-btn {
+      float: right;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .close-btn:hover { color: #fff; }
+
+    .formula-box {
+      background: rgba(5, 8, 16, 0.6);
+      border-left: 3px solid var(--accent-cyan);
+      padding: 10px 15px;
+      margin: 10px 0;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #cbd5e1;
+    }
+
+    /* Onay Modalı (Ana Ekrana Dönüş) */
+    .confirm-modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(3, 7, 18, 0.75);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 200;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .confirm-modal-box {
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent-cyan);
+      border-radius: 14px;
+      padding: 1.8rem;
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 0 40px rgba(56, 189, 248, 0.25);
+      text-align: center;
+    }
+
+    .confirm-modal-title {
+      font-size: 1.1rem;
+      font-family: var(--font-mono);
+      color: #fff;
+      margin-bottom: 0.8rem;
+      font-weight: 700;
+    }
+
+    .confirm-modal-text {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+
+    .confirm-modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .btn-cancel {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-main);
+      padding: 9px 18px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-cancel:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    .btn-confirm-leave {
+      background: rgba(244, 63, 94, 0.2);
+      border: 1px solid var(--accent-rose);
+      color: #f43f5e;
+      padding: 9px 18px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-confirm-leave:hover {
+      background: var(--accent-rose);
+      color: #fff;
+      box-shadow: 0 0 15px rgba(244, 63, 94, 0.4);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+        padding: 1rem;
+      }
+      .header-left {
+        flex-direction: column;
+        align-items: center;
+      }
+      .logo-container {
+        flex-direction: column;
+        justify-content: center;
+      }
+      h1 { font-size: 1.05rem; }
+      
+      .btn-modal {
+        width: 100%;
+        justify-content: center;
+        padding: 10px;
+        font-size: 0.85rem;
+      }
+
+      .formula-banner {
+        flex-direction: column;
+        justify-content: center;
+        padding: 1rem;
+      }
+      .formula-eq {
+        flex-wrap: wrap;
+        justify-content: center;
+        font-size: 1.1rem;
+      }
+      
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .viewport-container {
+        min-height: 350px;
+      }
+      canvas#simCanvas {
+        height: 350px;
+      }
+
+      .comparison-container {
+        overflow-x: auto;
+      }
+      .comp-table {
+        min-width: 580px; 
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        width: 24px;
+        height: 24px;
+      }
+      input[type="range"]::-moz-range-thumb {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--accent-cyan);
+        cursor: pointer;
+        border: none;
+      }
+      
+      .btn-preset {
+        padding: 10px;
+      }
+
+      .modal-content {
+        padding: 1.2rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+      .preset-grid {
+        grid-template-columns: 1fr;
+      }
+      .formula-eq {
+        font-size: 0.95rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <button id="back-btn" class="btn-back" onclick="openConfirmModal()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        <span data-i18n="ig_back">Ana Ekrana Dön</span>
+      </button>
+
+      <div class="logo-container">
+        <div class="logo-icon">PV</div>
+        <div>
+          <h1 data-i18n="ig_title">İdeal Gaz & Kinetik Teorik Laboratuvarı</h1>
+          <div class="subtitle" data-i18n="ig_subtitle">SI Birimleri ile Hassas Termodinamik Simülatörü</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-modal" onclick="toggleModal(true)">
+      <span>📖</span> <span data-i18n="ig_read_explanation">Bilimsel Açıklamayı Oku</span>
+    </button>
+  </header>
+
+  <main>
+    <div class="formula-banner">
+      <div class="formula-title" data-i18n="ig_formula_title">TERMODİNAMİK DURUM DENKLEMİ</div>
+      <div class="formula-eq">
+        <div class="eq-term" id="termP">
+          <span class="sym">P</span>
+          <span class="val" id="eqValP">1.00 atm</span>
+        </div>
+        <span class="eq-op">·</span>
+        <div class="eq-term" id="termV">
+          <span class="sym">V</span>
+          <span class="val" id="eqValV">1.00 m³</span>
+        </div>
+        <span class="eq-op">=</span>
+        <div class="eq-term" id="termN">
+          <span class="sym">n</span>
+          <span class="val" id="eqValN">3.32 mol</span>
+        </div>
+        <span class="eq-op">·</span>
+        <div class="eq-term">
+          <span class="sym">R</span>
+          <span class="val">8.314 J/mol·K</span>
+        </div>
+        <span class="eq-op">·</span>
+        <div class="eq-term" id="termT">
+          <span class="sym">T</span>
+          <span class="val" id="eqValT">300 K</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card viewport-container">
+      <div class="card-title" style="width: 100%;">
+        <span data-i18n="ig_chamber">3B Cam Deney Haznesi (İzometrik Projeksiyon)</span>
+        <span class="badge" id="fpsBadge">60 FPS</span>
+      </div>
+      <canvas id="simCanvas"></canvas>
+    </div>
+
+    <div class="controls-container">
+      <div class="card">
+        <div class="card-title" data-i18n="ig_parameters">Parametre Kontrolleri</div>
+        
+        <div class="control-group">
+          <div class="control-label">
+            <span data-i18n="ig_temperature">Sıcaklık (T)</span>
+            <span class="control-value" id="valT">300 K</span>
+          </div>
+          <input type="range" id="sliderT" min="50" max="1000" step="5" value="300">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span data-i18n="ig_volume">Hacim (V)</span>
+            <span class="control-value" id="valV">1.00 m³</span>
+          </div>
+          <input type="range" id="sliderV" min="0.25" max="2.00" step="0.05" value="1.00">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">
+            <span data-i18n="ig_particles">Simülasyon Parçacığı (N_sim)</span>
+            <span class="control-value" id="valN">200</span>
+          </div>
+          <input type="range" id="sliderN" min="50" max="500" step="10" value="200">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label" data-i18n="ig_gas_type">Gaz Türü Seçimi</div>
+          <select id="selectGas">
+            <option value="He" data-i18n="ig_gas_helium">Helyum (He) - M = 4.00 g/mol</option>
+            <option value="Ne" data-i18n="ig_gas_neon">Neon (Ne) - M = 20.18 g/mol</option>
+            <option value="N2" selected data-i18n="ig_gas_nitrogen">Azot (N₂) - M = 28.01 g/mol</option>
+            <option value="O2" data-i18n="ig_gas_oxygen">Oksijen (O₂) - M = 32.00 g/mol</option>
+            <option value="Ar" data-i18n="ig_gas_argon">Argon (Ar) - M = 39.95 g/mol</option>
+            <option value="CO2" data-i18n="ig_gas_carbon_dioxide">Karbondioksit (CO₂) - M = 44.01 g/mol</option>
+            <option value="Xe" data-i18n="ig_gas_xenon">Ksenon (Xe) - M = 131.29 g/mol</option>
+          </select>
+        </div>
+
+        <div class="control-group" style="margin-top: 0.4rem;">
+          <div class="control-label" data-i18n="ig_thermo_modes">Termodinamik Deney Modları</div>
+          <div class="preset-grid">
+            <button class="btn-preset" onclick="setPreset('boyle')" data-i18n="ig_boyle">Boyle (Sabit Sıcaklık)</button>
+            <button class="btn-preset" onclick="setPreset('charles')" data-i18n="ig_charles">Charles (Sabit Basınç)</button>
+            <button class="btn-preset" onclick="setPreset('gayLussac')" data-i18n="ig_gay_lussac">Gay-Lussac (Sabit Hacim)</button>
+            <button class="btn-preset" onclick="setPreset('reset')" data-i18n="ig_reset">Sıfırla</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-i18n="ig_scaling">Ölçekleme & Temsil Oranı</div>
+        <div style="font-size: 0.78rem; font-family: var(--font-mono); line-height: 1.6; color: var(--text-muted);">
+          <div>• <span data-i18n="ig_simulated_ball">1 Simüle Edilen Top</span> = <span style="color:#fff; font-weight:bold;">1.00 × 10²²</span> <span data-i18n="ig_molecules">Molekül</span></div>
+          <div>• <span data-i18n="ig_total_molecules">Toplam Gerçek Molekül</span>: <span id="txtNreal" style="color:var(--accent-cyan);">2.00e24</span></div>
+          <div>• <span data-i18n="ig_amount">Madde Miktarı (n)</span>: <span id="txtMoles" style="color:var(--accent-cyan);">3.321 mol</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-indicator"></div>
+        <div class="metric-title" data-i18n="ig_theoretical_pressure">Teorik Basınç (PV=nRT)</div>
+        <div><span class="metric-value" id="mPideal">1.00</span><span class="metric-unit">atm</span></div>
+        <div class="metric-sub" id="mPidealPa">101,325 Pa</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-indicator" style="background: var(--accent-amber); box-shadow: 0 0 8px var(--accent-amber);"></div>
+        <div class="metric-title" data-i18n="ig_measured_pressure">Ölçülen Basınç (F/A)</div>
+        <div><span class="metric-value" style="color: var(--accent-amber);" id="mPmeas">0.99</span><span class="metric-unit">atm</span></div>
+        <div class="metric-sub" id="mPmeasPa">100,210 Pa</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-indicator"></div>
+        <div class="metric-title" data-i18n="ig_rms_speed">Kök-Ortalama Hız (v_rms)</div>
+        <div><span class="metric-value" style="color: var(--accent-emerald);" id="mVrms">517</span><span class="metric-unit">m/s</span></div>
+        <div class="metric-sub"><span data-i18n="ig_theoretical">Teorik</span>: <span id="mVrmsTh">517</span> m/s</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-indicator"></div>
+        <div class="metric-title" data-i18n="ig_kinetic_energy">Ort. Kinetik Enerji</div>
+        <div><span class="metric-value" id="mEk">6.21</span><span class="metric-unit">×10⁻²¹ J</span></div>
+        <div class="metric-sub">&lt;E_k&gt; = 3/2 k_B T</div>
+      </div>
+    </div>
+
+    <div class="card comparison-container">
+      <div class="card-title">
+        <span data-i18n="ig_validation">Bilimsel Doğrulama & Basınç Karşılaştırması</span>
+        <span class="badge" id="badgeError"><span data-i18n="ig_difference">Fark</span>: %0.82</span>
+      </div>
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th data-i18n="ig_method">Hesaplama Yöntemi</th>
+            <th data-i18n="ig_formula">Kullanılan Formül</th>
+            <th data-i18n="ig_pressure_pa">Hesaplanan Basınç (Pa)</th>
+            <th data-i18n="ig_pressure_atm">Atmosfer (atm)</th>
+            <th data-i18n="ig_deviation">Teorik Sapma (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong class="tag-ideal" data-i18n="ig_ideal_law">1. İdeal Gaz Yasası (Makroskopik)</strong></td>
+            <td><code>P = nRT / V</code></td>
+            <td class="comp-value" id="rowP1Pa">101,325</td>
+            <td class="comp-value" id="rowP1Atm">1.000</td>
+            <td>0.00% <span data-i18n="ig_reference">(Referans)</span></td>
+          </tr>
+          <tr>
+            <td><strong class="tag-kinetic" data-i18n="ig_kinetic_theory">2. Kinetik Teori (Mikroskopik)</strong></td>
+            <td><code>P = N m v_rms² / (3V)</code></td>
+            <td class="comp-value" id="rowP2Pa">101,325</td>
+            <td class="comp-value" id="rowP2Atm">1.000</td>
+            <td id="rowP2Err">0.00%</td>
+          </tr>
+          <tr>
+            <td><strong class="tag-measured" data-i18n="ig_wall_collisions">3. Duvar Çarpışmaları (Simülasyon)</strong></td>
+            <td><code data-i18n="ig_wall_collision_formula">P = Toplam İtme / (Zaman · Yüzey)</code></td>
+            <td class="comp-value" id="rowP3Pa" style="color: var(--accent-amber);">100,500</td>
+            <td class="comp-value" id="rowP3Atm" style="color: var(--accent-amber);">0.992</td>
+            <td id="rowP3Err" style="color: var(--accent-amber);">-0.82%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <div class="card-title" data-i18n="ig_speed_distribution">Moleküllerin Hız Dağılım Trafiği (Maxwell-Boltzmann)</div>
+        <div class="chart-box">
+          <canvas id="chartMB" class="chartCanvas"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-i18n="ig_pressure_fluctuation">Zaman İçinde Basıncın Dalgalanması</div>
+        <div class="chart-box">
+          <canvas id="chartP" class="chartCanvas"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bilimsel Açıklama Modalı -->
+  <div class="modal-backdrop" id="modalDoc">
+    <div class="modal-content">
+      <span class="close-btn" onclick="toggleModal(false)">&times;</span>
+      <h2 data-i18n="ig_scientific_explanation">İdeal Gaz ve Kinetik Teori: Bilimsel Açıklama</h2>
+      
+      <p data-i18n="ig_intro">Bu simülasyon, yapay katsayılar kullanmadan tamamen evrensel SI birimleriyle çalışır. Gözlemlenebilir büyük ölçekli gaz yasalarının, atomik ölçekteki parçacık hareketlerinden ve duvar çarpışmalarından nasıl ortaya çıktığını gösterir.</p>
+
+      <h3 data-i18n="ig_section_constants">1. Evrenin Temel Sabitleri</h3>
+      <p data-i18n="ig_constants_intro">Simülasyonda fizik kitaplarında yer alan, doğanın değişmez sabitleri kullanılır:</p>
+      <div class="formula-box">
+        <span data-i18n="ig_formula_constants"></span>
+      </div>
+
+      <h3 data-i18n="ig_section_scaling">2. Parçacık Gruplandırma (Kaba Ölçekleme) Mantığı</h3>
+      <p data-i18n="ig_scaling_text">Gerçek hayatta küçük bir kutuda bile 10²³ mertebesinde molekül bulunur. Bu nedenle ekrandaki her top, 10²² molekülü temsil eden bir parçacık grubudur. Doğanın fizik kuralları bu gruplar için de aynı hassasiyetle uygulanır.</p>
+      <div class="formula-box">
+        <span data-i18n="ig_formula_scaling"></span>
+      </div>
+
+      <h3 data-i18n="ig_section_pressure">3. Basınç Gerçekte Nedir? (İtme ve Çarpışmalar)</h3>
+      <p data-i18n="ig_pressure_text">Basınç görünmez bir sihir değildir; trilyonlarca parçacığın duvarlara çarpıp sekmesinin sonucudur. Simülasyon her parçacığın duvara çarptığında uyguladığı momentumu hesaplar. Bu küçük çarpışmaların toplamı basınç değerini oluşturur.</p>
+      <div class="formula-box">
+        <span data-i18n="ig_formula_pressure"></span>
+      </div>
+
+      <h3 data-i18n="ig_section_distribution">4. Moleküllerin Trafiği (Hız Dağılımı)</h3>
+      <p data-i18n="ig_distribution_text">Aynı kutudaki gaz molekülleri aynı hızda hareket etmez. Bazıları yavaş, bazıları hızlıdır; çoğu ise ortalama bir hızda ilerler. Sıcaklık arttığında moleküllere enerji aktarılır ve bu trafik hızlanır. Bu dağılım Maxwell-Boltzmann hız dağılımı olarak adlandırılır.</p>
+      <div class="formula-box">
+        <span data-i18n="ig_formula_distribution"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ana Ekrana Dönüş Onay Modalı -->
+  <div class="confirm-modal-backdrop" id="confirmModal">
+    <div class="confirm-modal-box">
+      <div class="confirm-modal-title" data-i18n="ig_confirm_title">Ana Ekrana Dönüş</div>
+      <div class="confirm-modal-text" data-i18n="ig_confirm_text">Simülasyondan çıkıp ana ekrana dönmek istediğinize emin misiniz?</div>
+      <div class="confirm-modal-actions">
+        <button class="btn-cancel" onclick="closeConfirmModal()" data-i18n="modal_cancel">İptal</button>
+        <button class="btn-confirm-leave" onclick="goHome()" data-i18n="ig_return">Evet, Dön</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="lang.js"></script>
+  <script>
+    /* ==========================================================================
+       1. EVRENİN TEMEL SABİTLERİ (Fizik kitaplarındaki gerçek SI değerleri)
+       ========================================================================== */
+    const KB = 1.380649e-23;       // J/K (Sıcaklık ve enerji bağı)
+    const NA = 6.02214076e23;      // mol^-1 (1 mol içindeki sayı)
+    const R  = 8.314462618;        // J/(mol·K) (Gaz sabiti)
+    const ATM_PA = 101325;         // Pa (1 Atmosfer basıncının Pascal karşılığı)
+
+    // Gruplandırma Katsayısı: Bilgisayar çökmesin diye 1 çizim parçacığı 10^22 gerçek molekülü temsil eder.
+    const MOLECULES_PER_PARTICLE = 1.0e22;
+
+    // Ağır Çekim Çarpanı: Moleküller saniyede yüzlerce metre uçar, bunu gözle göremeyiz. 
+    // Bu yüzden fiziği bozmadan sadece zamanı görsel olarak yavaşlatıyoruz.
+    const TIME_SCALE = 0.005;
+
+    // Doğadaki Gazlar ve Ağırlıkları (Molar Kütle: kg/mol cinsinden)
+    const GASES = {
+      He:  { name: 'Helyum',  molarMass: 0.0040026, color: '#f43f5e' },
+      Ne:  { name: 'Neon',    molarMass: 0.0201797, color: '#fb923c' },
+      N2:  { name: 'Azot',    molarMass: 0.0280134, color: '#38bdf8' },
+      O2:  { name: 'Oksijen', molarMass: 0.0319988, color: '#34d399' },
+      Ar:  { name: 'Argon',   molarMass: 0.0399480, color: '#a855f7' },
+      CO2: { name: 'Karbondioksit', molarMass: 0.0440100, color: '#f43f5e' },
+      Xe:  { name: 'Ksenon',  molarMass: 0.1312930, color: '#facc15' }
+    };
+
+    /* ==========================================================================
+       2. SİMÜLASYONUN O ANKİ DURUMU (Sıcaklık, Hacim, Parçacık Sayısı vb. hafızada tutulur)
+       ========================================================================== */
+    const state = {
+      T: 300,             
+      V: 1.00,            
+      N_sim: 200,         
+      gasKey: 'N2',       
+      
+      Lx: 1.0,            
+      Lz: 1.0,            
+      Ly: 1.0,            
+
+      particles: [],      
+
+      accumulatedMomentum: 0,
+      accumulatedTime: 0,
+      
+      measuredPressurePa: ATM_PA,
+      instantPressurePa: ATM_PA,
+      pressureHistory: [],  
+      maxHistoryPoints: 120,
+
+      impactEffects: [],
+
+      isobaricMode: false,
+      targetP_Pa: ATM_PA
+    };
+
+    /* ==========================================================================
+       3. DOĞAL RASTGELELİK MOTORU (Doğadaki rastgele ama belirli bir kurala uyan hız dağılımını üretir)
+       ========================================================================== */
+    function randomGaussian(mean = 0, stdDev = 1) {
+      let u1 = Math.random();
+      let u2 = Math.random();
+      while (u1 === 0) u1 = Math.random();
+      let z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+      return mean + z0 * stdDev;
+    }
+
+    /* ==========================================================================
+       4. PARÇACIKLARI YARATMA VE ÇARPIŞMA FİZİĞİ (Ana Fizik Motoru)
+       ========================================================================== */
+    function getSingleMoleculeMass() {
+      return GASES[state.gasKey].molarMass / NA; 
+    }
+
+    function initParticles() {
+      state.particles = [];
+      state.Ly = state.V / (state.Lx * state.Lz);
+      const m_mol = getSingleMoleculeMass();
+      const sigma = Math.sqrt(KB * state.T / m_mol);
+
+      for (let i = 0; i < state.N_sim; i++) {
+        let x = Math.random() * state.Lx;
+        let y = Math.random() * state.Ly;
+        let z = Math.random() * state.Lz;
+
+        let vx = randomGaussian(0, sigma);
+        let vy = randomGaussian(0, sigma);
+        let vz = randomGaussian(0, sigma);
+
+        state.particles.push({ x, y, z, vx, vy, vz });
+      }
+      
+      state.accumulatedMomentum = 0;
+      state.accumulatedTime = 0;
+      state.impactEffects = [];
+    }
+
+    function rescaleVelocities() {
+      const m_mol = getSingleMoleculeMass();
+      
+      let sumv2 = 0;
+      for (let p of state.particles) {
+        sumv2 += p.vx*p.vx + p.vy*p.vy + p.vz*p.vz;
+      }
+      let currentVrms = Math.sqrt(sumv2 / state.N_sim);
+      let targetVrms = Math.sqrt((3 * KB * state.T) / m_mol);
+
+      if (currentVrms === 0) return;
+      let factor = targetVrms / currentVrms;
+
+      for (let p of state.particles) {
+        p.vx *= factor;
+        p.vy *= factor;
+        p.vz *= factor;
+      }
+    }
+
+    function updatePhysics(dt) {
+      if (dt <= 0) return;
+
+      const m_mol = getSingleMoleculeMass();
+      const m_particle = m_mol * MOLECULES_PER_PARTICLE;
+
+      let frameMomentum = 0;
+
+      for (let p of state.particles) {
+        let rem_dt = dt;
+        let safety = 0;
+
+        while (rem_dt > 1e-12 && safety < 10) {
+          safety++;
+
+          let tx = p.vx > 0 ? (state.Lx - p.x) / p.vx : (p.vx < 0 ? -p.x / p.vx : Infinity);
+          let ty = p.vy > 0 ? (state.Ly - p.y) / p.vy : (p.vy < 0 ? -p.y / p.vy : Infinity);
+          let tz = p.vz > 0 ? (state.Lz - p.z) / p.vz : (p.vz < 0 ? -p.z / p.vz : Infinity);
+
+          let t_hit = Math.min(tx, ty, tz);
+
+          if (t_hit >= rem_dt) {
+            p.x += p.vx * rem_dt;
+            p.y += p.vy * rem_dt;
+            p.z += p.vz * rem_dt;
+            rem_dt = 0;
+          } else {
+            p.x += p.vx * t_hit;
+            p.y += p.vy * t_hit;
+            p.z += p.vz * t_hit;
+            rem_dt -= t_hit;
+
+            let hitNormal = { x: 0, y: 0, z: 0 };
+
+            if (t_hit === tx) {
+              let dp = 2 * m_particle * Math.abs(p.vx);
+              frameMomentum += dp;
+              p.vx = -p.vx;
+              p.x = p.vx > 0 ? 0 : state.Lx;
+              hitNormal.x = p.vx > 0 ? 1 : -1;
+            } else if (t_hit === ty) {
+              let dp = 2 * m_particle * Math.abs(p.vy);
+              frameMomentum += dp;
+              p.vy = -p.vy;
+              p.y = p.vy > 0 ? 0 : state.Ly;
+              hitNormal.y = p.vy > 0 ? 1 : -1;
+            } else if (t_hit === tz) {
+              let dp = 2 * m_particle * Math.abs(p.vz);
+              frameMomentum += dp;
+              p.vz = -p.vz;
+              p.z = p.vz > 0 ? 0 : state.Lz;
+              hitNormal.z = p.vz > 0 ? 1 : -1;
+            }
+
+            if (state.impactEffects.length < 35) {
+              state.impactEffects.push({
+                x: p.x, y: p.y, z: p.z,
+                nx: hitNormal.x, ny: hitNormal.y, nz: hitNormal.z,
+                age: 0, maxAge: 0.25
+              });
+            }
+          }
+        }
+      }
+
+      state.accumulatedMomentum += frameMomentum;
+      state.accumulatedTime += dt;
+
+      let totalArea = 2 * (state.Lx * state.Ly + state.Ly * state.Lz + state.Lx * state.Lz);
+      if (dt > 0 && totalArea > 0) {
+        state.instantPressurePa = (frameMomentum / dt) / totalArea;
+      }
+
+      if (state.accumulatedTime >= 0.12 * TIME_SCALE) {
+        let avgForce = state.accumulatedMomentum / state.accumulatedTime;
+        state.measuredPressurePa = avgForce / totalArea;
+
+        state.accumulatedMomentum *= 0.5;
+        state.accumulatedTime *= 0.5;
+
+        let P_ideal = (getMoles() * R * state.T) / state.V;
+        state.pressureHistory.push({
+          t: Date.now(),
+          ideal: P_ideal / ATM_PA,
+          measured: state.measuredPressurePa / ATM_PA
+        });
+
+        if (state.pressureHistory.length > state.maxHistoryPoints) {
+          state.pressureHistory.shift();
+        }
+      }
+
+      if (state.isobaricMode) {
+        let n = getMoles();
+        let targetV = (n * R * state.T) / state.targetP_Pa;
+        state.V += (targetV - state.V) * 0.05;
+        state.Ly = state.V / (state.Lx * state.Lz);
+        document.getElementById('sliderV').value = state.V;
+        document.getElementById('valV').innerText = state.V.toFixed(2) + ' m³';
+      }
+    }
+
+    /* ==========================================================================
+       5. BİLİMSEL FORMÜL HESAPLAMALARI (Toplam molekül, ortalama hız vb.)
+       ========================================================================== */
+    function getMoles() {
+      let N_real = state.N_sim * MOLECULES_PER_PARTICLE;
+      return N_real / NA;
+    }
+
+    function calculateVrmsSim() {
+      let sumv2 = 0;
+      for (let p of state.particles) {
+        sumv2 += p.vx*p.vx + p.vy*p.vy + p.vz*p.vz;
+      }
+      return Math.sqrt(sumv2 / state.N_sim);
+    }
+
+    /* ==========================================================================
+       6. 3 BOYUTLU KAMERA VE EKRANA ÇİZİM İŞLEMLERİ
+       ========================================================================== */
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = window.innerWidth <= 768 ? 350 : 500; 
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function project3D(x, y, z, boxW, boxH, boxD, X0, Y0) {
+      let relX = x / state.Lx;
+      let relY = y / state.Ly;
+      let relZ = z / state.Lz;
+
+      let cosAngle = 0.707;
+      let sinAngle = 0.45;
+
+      let sx = X0 + relX * boxW + relZ * boxD * cosAngle;
+      let sy = Y0 - relY * boxH - relZ * boxD * sinAngle;
+
+      return { x: sx, y: sy, zRel: relZ };
+    }
+
+    function renderSimulation(delta) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.03)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 30) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 30) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      }
+
+      const boxW = Math.min(w * 0.45, 290);
+      const maxLy = 2.0;
+      const maxBoxH = h * 0.48;
+      const boxH = (state.Ly / maxLy) * maxBoxH;
+      const boxD = boxW * 0.35;
+
+      const X0 = (w - boxW - boxD * 0.707) / 2;
+      const Y0 = h * 0.78;
+
+      const p000 = project3D(0, 0, 0, boxW, boxH, boxD, X0, Y0);
+      const p100 = project3D(state.Lx, 0, 0, boxW, boxH, boxD, X0, Y0);
+      const p101 = project3D(state.Lx, 0, state.Lz, boxW, boxH, boxD, X0, Y0);
+      const p001 = project3D(0, 0, state.Lz, boxW, boxH, boxD, X0, Y0);
+
+      const p010 = project3D(0, state.Ly, 0, boxW, boxH, boxD, X0, Y0);
+      const p110 = project3D(state.Lx, state.Ly, 0, boxW, boxH, boxD, X0, Y0);
+      const p111 = project3D(state.Lx, state.Ly, state.Lz, boxW, boxH, boxD, X0, Y0);
+      const p011 = project3D(0, state.Ly, state.Lz, boxW, boxH, boxD, X0, Y0);
+
+      // 1. Arka Duvar
+      ctx.fillStyle = 'rgba(11, 18, 33, 0.85)';
+      ctx.beginPath();
+      ctx.moveTo(p001.x, p001.y); ctx.lineTo(p101.x, p101.y);
+      ctx.lineTo(p111.x, p111.y); ctx.lineTo(p011.x, p011.y);
+      ctx.closePath(); ctx.fill();
+
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 5; i++) {
+        let fy = i / 5;
+        let pL = project3D(0, state.Ly * fy, state.Lz, boxW, boxH, boxD, X0, Y0);
+        let pR = project3D(state.Lx, state.Ly * fy, state.Lz, boxW, boxH, boxD, X0, Y0);
+        ctx.beginPath(); ctx.moveTo(pL.x, pL.y); ctx.lineTo(pR.x, pR.y); ctx.stroke();
+      }
+
+      // 2. Taban
+      ctx.fillStyle = 'rgba(8, 14, 26, 0.9)';
+      ctx.beginPath();
+      ctx.moveTo(p000.x, p000.y); ctx.lineTo(p100.x, p100.y);
+      ctx.lineTo(p101.x, p101.y); ctx.lineTo(p001.x, p001.y);
+      ctx.closePath(); ctx.fill();
+
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+      for (let i = 1; i < 5; i++) {
+        let fx = i / 5;
+        let pS = project3D(state.Lx * fx, 0, 0, boxW, boxH, boxD, X0, Y0);
+        let pE = project3D(state.Lx * fx, 0, state.Lz, boxW, boxH, boxD, X0, Y0);
+        ctx.beginPath(); ctx.moveTo(pS.x, pS.y); ctx.lineTo(pE.x, pE.y); ctx.stroke();
+      }
+
+      // 3. Yan Duvarlar (Gelişmiş Cam Efekti)
+      let leftGlassGrad = ctx.createLinearGradient(p000.x, p000.y, p011.x, p011.y);
+      leftGlassGrad.addColorStop(0, 'rgba(56, 189, 248, 0.15)');
+      leftGlassGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.05)');
+      leftGlassGrad.addColorStop(1, 'rgba(56, 189, 248, 0.1)');
+      ctx.fillStyle = leftGlassGrad;
+      ctx.beginPath();
+      ctx.moveTo(p000.x, p000.y); ctx.lineTo(p001.x, p001.y);
+      ctx.lineTo(p011.x, p011.y); ctx.lineTo(p010.x, p010.y);
+      ctx.closePath(); ctx.fill();
+
+      let rightGlassGrad = ctx.createLinearGradient(p100.x, p100.y, p111.x, p111.y);
+      rightGlassGrad.addColorStop(0, 'rgba(56, 189, 248, 0.15)');
+      rightGlassGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.02)');
+      rightGlassGrad.addColorStop(1, 'rgba(56, 189, 248, 0.08)');
+      ctx.fillStyle = rightGlassGrad;
+      ctx.beginPath();
+      ctx.moveTo(p100.x, p100.y); ctx.lineTo(p101.x, p101.y);
+      ctx.lineTo(p111.x, p111.y); ctx.lineTo(p110.x, p110.y);
+      ctx.closePath(); ctx.fill();
+
+      // 4. Parçacıkların Derinliğe (Z) Göre Çizimi
+      let sortedParticles = state.particles.map((p) => {
+        let proj = project3D(p.x, p.y, p.z, boxW, boxH, boxD, X0, Y0);
+        let vMag = Math.sqrt(p.vx*p.vx + p.vy*p.vy + p.vz*p.vz);
+        return { p, proj, vMag };
+      });
+      sortedParticles.sort((a, b) => b.p.z - a.p.z); 
+
+      const gasInfo = GASES[state.gasKey];
+      const m_mol = getSingleMoleculeMass();
+      const v_rms_th = Math.sqrt((3 * KB * state.T) / m_mol);
+
+      for (let item of sortedParticles) {
+        let { p, proj, vMag } = item;
+        let zRatio = p.z / state.Lz;
+
+        let radius = 2.5 + (1 - zRatio) * 3.5;
+        let alpha = 0.35 + (1 - zRatio) * 0.65;
+
+        let trailTime = 0.00008;
+        let tailP = project3D(
+          p.x - p.vx * trailTime,
+          p.y - p.vy * trailTime,
+          p.z - p.vz * trailTime,
+          boxW, boxH, boxD, X0, Y0
+        );
+
+        let speedRatio = vMag / v_rms_th;
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        let grad = ctx.createLinearGradient(proj.x, proj.y, tailP.x, tailP.y);
+        grad.addColorStop(0, gasInfo.color);
+        grad.addColorStop(1, 'transparent');
+
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = Math.max(1, radius * 0.7 * Math.min(speedRatio, 2));
+        ctx.beginPath();
+        ctx.moveTo(proj.x, proj.y);
+        ctx.lineTo(tailP.x, tailP.y);
+        ctx.stroke();
+
+        ctx.fillStyle = gasInfo.color;
+        if (speedRatio > 1.3) {
+          ctx.shadowColor = '#ffffff';
+          ctx.shadowBlur = Math.min(10, speedRatio * 5);
+        }
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 5. Görsel Çarpışma Şok Dalgaları (Delta time ile ekran hızı eşitlemesi)
+      for (let i = state.impactEffects.length - 1; i >= 0; i--) {
+        let ef = state.impactEffects[i];
+        ef.age += delta;
+        if (ef.age >= ef.maxAge) {
+          state.impactEffects.splice(i, 1);
+          continue;
+        }
+
+        let proj = project3D(ef.x, ef.y, ef.z, boxW, boxH, boxD, X0, Y0);
+        let progress = ef.age / ef.maxAge;
+        let r = progress * 18 + 2;
+        let opacity = (1 - progress) * 0.7;
+
+        ctx.save();
+        ctx.strokeStyle = `rgba(56, 189, 248, ${opacity})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = `rgba(251, 191, 36, ${opacity})`;
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 6. Cam Piston (Hareketli Üst Duvar)
+      ctx.save();
+      let pistonGrad = ctx.createLinearGradient(p010.x, p010.y, p110.x, p110.y);
+      pistonGrad.addColorStop(0, 'rgba(56, 189, 248, 0.25)');
+      pistonGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.6)');
+      pistonGrad.addColorStop(1, 'rgba(56, 189, 248, 0.25)');
+
+      ctx.fillStyle = pistonGrad;
+      ctx.beginPath();
+      ctx.moveTo(p010.x, p010.y);
+      ctx.lineTo(p110.x, p110.y);
+      ctx.lineTo(p111.x, p111.y);
+      ctx.lineTo(p011.x, p011.y);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+
+      let topCenterX = (p010.x + p110.x + p111.x + p011.x) / 4;
+      let topCenterY = (p010.y + p110.y + p111.y + p011.y) / 4;
+
+      let arrowLen = Math.min(40, Math.max(15, (state.measuredPressurePa / ATM_PA) * 22));
+      drawArrow(ctx, topCenterX - 10, topCenterY, topCenterX - 10, topCenterY - arrowLen, '#38bdf8', 'F_gaz');
+      drawArrow(ctx, topCenterX + 10, topCenterY - arrowLen - 8, topCenterX + 10, topCenterY - 8, '#fb923c', 'F_dış');
+
+      // 7. Ön Cam Kenarları ve Yüzeyi
+      let frontGlassGrad = ctx.createLinearGradient(p010.x, p010.y, p100.x, p100.y);
+      frontGlassGrad.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
+      frontGlassGrad.addColorStop(0.4, 'rgba(255, 255, 255, 0.01)');
+      frontGlassGrad.addColorStop(1, 'rgba(56, 189, 248, 0.1)');
+      
+      ctx.fillStyle = frontGlassGrad;
+      ctx.beginPath();
+      ctx.moveTo(p000.x, p000.y); ctx.lineTo(p100.x, p100.y);
+      ctx.lineTo(p110.x, p110.y); ctx.lineTo(p010.x, p010.y);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(p000.x, p000.y - 1); ctx.lineTo(p100.x, p100.y - 1);
+      ctx.lineTo(p110.x, p110.y + 1); ctx.lineTo(p010.x, p010.y + 1);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    function drawArrow(ctx, x1, y1, x2, y2, color, label) {
+      let headlen = 6;
+      let dx = x2 - x1;
+      let dy = y2 - y1;
+      let angle = Math.atan2(dy, dx);
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 1.5;
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - headlen * Math.cos(angle - Math.PI / 6), y2 - headlen * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(x2 - headlen * Math.cos(angle + Math.PI / 6), y2 - headlen * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+
+      if (label) {
+        ctx.font = '9px var(--font-mono)';
+        ctx.fillText(label, x2 + (dx >= 0 ? 4 : -18), y2 + (dy >= 0 ? 10 : -4));
+      }
+      ctx.restore();
+    }
+
+    /* ==========================================================================
+       7. CANLI GRAFİKLERİN ÇİZİLMESİ (Hız ve Basınç Dağılımı)
+       ========================================================================== */
+    const canvasMB = document.getElementById('chartMB');
+    const ctxMB = canvasMB.getContext('2d');
+
+    function drawChartMB() {
+      const w = canvasMB.width = canvasMB.parentElement.clientWidth;
+      const h = canvasMB.height = canvasMB.parentElement.clientHeight;
+
+      ctxMB.clearRect(0, 0, w, h);
+
+      const m_mol = getSingleMoleculeMass();
+      const v_mp = Math.sqrt((2 * KB * state.T) / m_mol);
+      const v_avg = Math.sqrt((8 * KB * state.T) / (Math.PI * m_mol));
+      const v_rms = Math.sqrt((3 * KB * state.T) / m_mol);
+
+      const maxV = v_rms * 2.4;
+      const numBins = 24;
+      const binWidthV = maxV / numBins;
+
+      let bins = new Array(numBins).fill(0);
+      for (let p of state.particles) {
+        let v = Math.sqrt(p.vx*p.vx + p.vy*p.vy + p.vz*p.vz);
+        let binIdx = Math.floor(v / binWidthV);
+        if (binIdx >= 0 && binIdx < numBins) bins[binIdx]++;
+      }
+
+      const margin = { top: 25, right: 15, bottom: 25, left: 35 };
+      const chartW = w - margin.left - margin.right;
+      const chartH = h - margin.top - margin.bottom;
+
+      let maxBinCount = Math.max(...bins, 10);
+      const barW = chartW / numBins;
+
+      ctxMB.fillStyle = 'rgba(56, 189, 248, 0.2)';
+      ctxMB.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+
+      for (let i = 0; i < numBins; i++) {
+        let bh = (bins[i] / maxBinCount) * chartH;
+        let bx = margin.left + i * barW;
+        let by = margin.top + chartH - bh;
+
+        ctxMB.fillRect(bx, by, barW - 1, bh);
+        ctxMB.strokeRect(bx, by, barW - 1, bh);
+      }
+
+      ctxMB.beginPath();
+      ctxMB.strokeStyle = '#34d399';
+      ctxMB.lineWidth = 2;
+
+      let constFactor = 4 * Math.PI * Math.pow(m_mol / (2 * Math.PI * KB * state.T), 1.5);
+      let maxF = constFactor * v_mp * v_mp * Math.exp(-1);
+
+      for (let px = 0; px <= chartW; px += 2) {
+        let v = (px / chartW) * maxV;
+        let fv = constFactor * v * v * Math.exp((-m_mol * v * v) / (2 * KB * state.T));
+        let py = margin.top + chartH - (fv / maxF) * (chartH * 0.85);
+
+        if (px === 0) ctxMB.moveTo(margin.left + px, py);
+        else ctxMB.lineTo(margin.left + px, py);
+      }
+      ctxMB.stroke();
+
+      drawChartMarker(ctxMB, margin.left + (v_mp / maxV) * chartW, margin, chartH, '#f43f5e', 'v_mp');
+      drawChartMarker(ctxMB, margin.left + (v_avg / maxV) * chartW, margin, chartH, '#fbbf24', 'v_avg');
+      drawChartMarker(ctxMB, margin.left + (v_rms / maxV) * chartW, margin, chartH, '#34d399', 'v_rms');
+
+      ctxMB.fillStyle = '#94a3b8';
+      ctxMB.font = '9px var(--font-mono)';
+      ctxMB.fillText(`v_mp: ${Math.round(v_mp)} m/s`, w - 120, margin.top + 5);
+      ctxMB.fillText(`v_rms: ${Math.round(v_rms)} m/s`, w - 120, margin.top + 18);
+    }
+
+    function drawChartMarker(ctx, x, margin, chartH, color, label) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(x, margin.top);
+      ctx.lineTo(x, margin.top + chartH);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const canvasP = document.getElementById('chartP');
+    const ctxP = canvasP.getContext('2d');
+
+    function drawChartP() {
+      const w = canvasP.width = canvasP.parentElement.clientWidth;
+      const h = canvasP.height = canvasP.parentElement.clientHeight;
+
+      ctxP.clearRect(0, 0, w, h);
+
+      const margin = { top: 20, right: 15, bottom: 25, left: 40 };
+      const chartW = w - margin.left - margin.right;
+      const chartH = h - margin.top - margin.bottom;
+
+      let history = state.pressureHistory;
+      if (history.length < 2) return;
+
+      let P_ideal = (getMoles() * R * state.T) / state.V / ATM_PA;
+
+      let yMin = P_ideal * 0.75;
+      let yMax = P_ideal * 1.25;
+
+      let yIdealPx = margin.top + chartH - ((P_ideal - yMin) / (yMax - yMin)) * chartH;
+      ctxP.strokeStyle = '#38bdf8';
+      ctxP.lineWidth = 1.5;
+      ctxP.setLineDash([4, 4]);
+      ctxP.beginPath();
+      ctxP.moveTo(margin.left, yIdealPx);
+      ctxP.lineTo(margin.left + chartW, yIdealPx);
+      ctxP.stroke();
+      ctxP.setLineDash([]);
+
+      ctxP.beginPath();
+      ctxP.strokeStyle = '#fbbf24';
+      ctxP.lineWidth = 2;
+
+      for (let i = 0; i < history.length; i++) {
+        let x = margin.left + (i / (state.maxHistoryPoints - 1)) * chartW;
+        let pVal = history[i].measured;
+        let y = margin.top + chartH - ((pVal - yMin) / (yMax - yMin)) * chartH;
+        y = Math.max(margin.top, Math.min(margin.top + chartH, y));
+
+        if (i === 0) ctxP.moveTo(x, y);
+        else ctxP.lineTo(x, y);
+      }
+      ctxP.stroke();
+
+      ctxP.fillStyle = '#94a3b8';
+      ctxP.font = '9px var(--font-mono)';
+      ctxP.fillText(`${yMax.toFixed(2)} atm`, 5, margin.top + 8);
+      ctxP.fillText(`${yMin.toFixed(2)} atm`, 5, margin.top + chartH);
+    }
+
+    /* ==========================================================================
+       8. EKRANDAKİ SAYILARIN VE GÖSTERGELERİN YENİLENMESİ
+       ========================================================================== */
+    function triggerVarHighlight(id) {
+      let el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('highlight-pulse');
+        void el.offsetWidth;
+        el.classList.add('highlight-pulse');
+      }
+    }
+
+    function updateDashboardUI() {
+      let moles = getMoles();
+      let P_ideal_Pa = (moles * R * state.T) / state.V;
+      let P_ideal_atm = P_ideal_Pa / ATM_PA;
+
+      let P_meas_Pa = state.measuredPressurePa;
+      let P_meas_atm = P_meas_Pa / ATM_PA;
+
+      let m_mol = getSingleMoleculeMass();
+      let v_rms_th = Math.sqrt((3 * KB * state.T) / m_mol);
+      let v_rms_sim = calculateVrmsSim();
+
+      let Ek_avg = 1.5 * KB * state.T;
+
+      document.getElementById('eqValP').innerText = P_ideal_atm.toFixed(2) + ' atm';
+      document.getElementById('eqValV').innerText = state.V.toFixed(2) + ' m³';
+      document.getElementById('eqValN').innerText = moles.toFixed(2) + ' mol';
+      document.getElementById('eqValT').innerText = state.T + ' K';
+
+      document.getElementById('mPideal').innerText = P_ideal_atm.toFixed(2);
+      document.getElementById('mPidealPa').innerText = Math.round(P_ideal_Pa).toLocaleString() + ' Pa';
+
+      document.getElementById('mPmeas').innerText = P_meas_atm.toFixed(2);
+      document.getElementById('mPmeasPa').innerText = Math.round(P_meas_Pa).toLocaleString() + ' Pa';
+
+      document.getElementById('mVrms').innerText = Math.round(v_rms_sim);
+      document.getElementById('mVrmsTh').innerText = Math.round(v_rms_th);
+
+      document.getElementById('mEk').innerText = (Ek_avg * 1e21).toFixed(2);
+
+      document.getElementById('txtNreal').innerText = (state.N_sim * MOLECULES_PER_PARTICLE).toExponential(2);
+      document.getElementById('txtMoles').innerText = moles.toFixed(3) + ' mol';
+
+      document.getElementById('rowP1Pa').innerText = Math.round(P_ideal_Pa).toLocaleString();
+      document.getElementById('rowP1Atm').innerText = P_ideal_atm.toFixed(3);
+
+      let N_real = state.N_sim * MOLECULES_PER_PARTICLE;
+      let P_kinetic_Pa = (N_real * m_mol * v_rms_sim * v_rms_sim) / (3 * state.V);
+      let P_kinetic_atm = P_kinetic_Pa / ATM_PA;
+      let errKinetic = ((P_kinetic_Pa - P_ideal_Pa) / P_ideal_Pa) * 100;
+
+      document.getElementById('rowP2Pa').innerText = Math.round(P_kinetic_Pa).toLocaleString();
+      document.getElementById('rowP2Atm').innerText = P_kinetic_atm.toFixed(3);
+      document.getElementById('rowP2Err').innerText = (errKinetic >= 0 ? '+' : '') + errKinetic.toFixed(2) + '%';
+
+      let errMeas = ((P_meas_Pa - P_ideal_Pa) / P_ideal_Pa) * 100;
+      document.getElementById('rowP3Pa').innerText = Math.round(P_meas_Pa).toLocaleString();
+      document.getElementById('rowP3Atm').innerText = P_meas_atm.toFixed(3);
+      document.getElementById('rowP3Err').innerText = (errMeas >= 0 ? '+' : '') + errMeas.toFixed(2) + '%';
+
+      document.getElementById('badgeError').innerText = `${t('ig_difference')}: %${Math.abs(errMeas).toFixed(2)}`;
+    }
+
+    /* ==========================================================================
+       9. DÜĞMELERE VE SÜRGÜLERE TIKLAMA KONTROLLERİ & MODAL İŞLEMLERİ
+       ========================================================================== */
+    function openConfirmModal() {
+      document.getElementById('confirmModal').style.display = 'flex';
+    }
+
+    function closeConfirmModal() {
+      document.getElementById('confirmModal').style.display = 'none';
+    }
+
+    function goHome() {
+      window.location.href = 'index.html';
+    }
+
+    document.getElementById('sliderT').addEventListener('input', (e) => {
+      state.T = parseFloat(e.target.value);
+      document.getElementById('valT').innerText = state.T + ' K';
+      triggerVarHighlight('termT');
+      rescaleVelocities();
+    });
+
+    document.getElementById('sliderV').addEventListener('input', (e) => {
+      state.V = parseFloat(e.target.value);
+      state.Ly = state.V / (state.Lx * state.Lz);
+      document.getElementById('valV').innerText = state.V.toFixed(2) + ' m³';
+      triggerVarHighlight('termV');
+      
+      for (let p of state.particles) {
+        if (p.y > state.Ly) p.y = state.Ly * Math.random();
+      }
+    });
+
+    document.getElementById('sliderN').addEventListener('input', (e) => {
+      let newN = parseInt(e.target.value);
+      document.getElementById('valN').innerText = newN;
+      triggerVarHighlight('termN');
+      
+      if (newN > state.N_sim) {
+        const m_mol = getSingleMoleculeMass();
+        const sigma = Math.sqrt(KB * state.T / m_mol);
+        for (let i = state.N_sim; i < newN; i++) {
+          state.particles.push({
+            x: Math.random() * state.Lx,
+            y: Math.random() * state.Ly,
+            z: Math.random() * state.Lz,
+            vx: randomGaussian(0, sigma),
+            vy: randomGaussian(0, sigma),
+            vz: randomGaussian(0, sigma)
+          });
+        }
+      } else {
+        state.particles.length = newN;
+      }
+      state.N_sim = newN;
+    });
+
+    document.getElementById('selectGas').addEventListener('change', (e) => {
+      state.gasKey = e.target.value;
+      initParticles();
+    });
+
+    function setPreset(type) {
+      state.isobaricMode = false;
+      if (type === 'reset') {
+        state.T = 300; state.V = 1.0; state.N_sim = 200; state.gasKey = 'N2';
+        document.getElementById('sliderT').value = 300;
+        document.getElementById('sliderV').value = 1.0;
+        document.getElementById('sliderN').value = 200;
+        document.getElementById('selectGas').value = 'N2';
+        document.getElementById('valT').innerText = '300 K';
+        document.getElementById('valV').innerText = '1.00 m³';
+        document.getElementById('valN').innerText = '200';
+        initParticles();
+      } else if (type === 'boyle') {
+        state.T = 300;
+        document.getElementById('sliderT').value = 300;
+        document.getElementById('valT').innerText = '300 K';
+        triggerVarHighlight('termT');
+        rescaleVelocities();
+      } else if (type === 'charles') {
+        state.isobaricMode = true;
+        state.targetP_Pa = (getMoles() * R * state.T) / state.V;
+      } else if (type === 'gayLussac') {
+        state.V = 1.0;
+        state.Ly = 1.0;
+        document.getElementById('sliderV').value = 1.0;
+        document.getElementById('valV').innerText = '1.00 m³';
+        triggerVarHighlight('termV');
+      }
+    }
+
+    function toggleModal(show) {
+      document.getElementById('modalDoc').style.display = show ? 'flex' : 'none';
+    }
+
+    /* ==========================================================================
+       10. DELTA TIME & ZAMANIN AKIŞI (120Hz / 144Hz Ekran Uyumlu Ana Motor)
+       ========================================================================== */
+    let lastTime = performance.now();
+    let frameCount = 0;
+    let fpsTimer = performance.now();
+
+    function animate(currentTime) {
+      if (!currentTime) currentTime = performance.now();
+      
+      // Dynamic Delta Time hesabı (farklı ekran tazeleme hızlarında sabit fizik hızı)
+      const delta = Math.min((currentTime - lastTime) / 1000, 0.1);
+      lastTime = currentTime;
+      const dt = delta * 60; // Standardize 60 FPS çarpanı
+
+      frameCount++;
+      if (currentTime - fpsTimer >= 1000) {
+        document.getElementById('fpsBadge').innerText = `${Math.round((frameCount * 1000) / (currentTime - fpsTimer))} FPS`;
+        frameCount = 0;
+        fpsTimer = currentTime;
+      }
+
+      // Delta Time katsayısıyla ölçeklenmiş alt fizik adımları
+      let scaledDt = delta * TIME_SCALE;
+      const subSteps = 4;
+      const subDt = scaledDt / subSteps;
+      
+      for (let i = 0; i < subSteps; i++) {
+        updatePhysics(subDt);
+      }
+
+      renderSimulation(delta);
+      drawChartMB();
+      drawChartP();
+      updateDashboardUI();
+
+      requestAnimationFrame(animate);
+    }
+
+    initParticles();
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

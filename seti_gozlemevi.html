@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title data-i18n="seti_page_title">SETI Gözlemevi - Etkileşimli Galaktik Simülasyon</title>
+    <style>
+        :root {
+            --bg-base: #02050a;
+            --bg-surface: #0a111a;
+            --bg-panel: #111d2b;
+            --accent-cyan: #00f0ff;
+            --accent-teal: #00e5b8;
+            --accent-warning: #f1c40f;
+            --accent-danger: #ff3366;
+            --text-main: #e6f4f8;
+            --text-muted: #5e7a96;
+            --font-mono: 'Consolas', 'Courier New', monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            padding: 15px;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stars-bg {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1;
+            background-image: 
+                radial-gradient(1px 1px at 20px 30px, #00f0ff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 40px 70px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 50px 160px, #00e5b8, rgba(0,0,0,0));
+            background-size: 200px 200px; opacity: 0.2;
+        }
+
+        .container { width: 100%; max-width: 1100px; display: grid; gap: 15px; }
+        
+        header { 
+            border-bottom: 1px solid rgba(0, 240, 255, 0.2); 
+            padding-bottom: 10px; 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+        }
+
+        /* Geri Butonu Stili */
+        .btn-back {
+            background: rgba(10, 17, 26, 0.8);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: 0.2s;
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-back:active {
+            transform: scale(0.92);
+            background: var(--bg-panel);
+        }
+        .btn-back svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        h1 { font-size: 20px; color: var(--accent-cyan); font-family: var(--font-mono); text-transform: uppercase; }
+        .subtitle { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); }
+
+        /* Modal Diyalog Stili */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-box {
+            background: #0d1622;
+            border: 1px solid rgba(0, 240, 255, 0.25);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 340px;
+            padding: 24px 20px 20px 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            transform: scale(0.9);
+            transition: transform 0.25s ease;
+        }
+        .modal-overlay.active .modal-box {
+            transform: scale(1);
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 8px;
+        }
+        .modal-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .btn-modal {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            transition: 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-cancel {
+            background: #1a2636;
+            color: #a0b0c0;
+        }
+        .btn-cancel:active { background: #253548; }
+        .btn-confirm {
+            background: #29b6f6;
+            color: #000;
+        }
+        .btn-confirm:active { opacity: 0.85; }
+
+        /* Sekmeler */
+        .tab-nav { display: flex; gap: 10px; }
+        .tab-btn {
+            flex: 1; background: var(--bg-surface); border: 1px solid rgba(0, 240, 255, 0.2);
+            color: var(--text-muted); padding: 12px; border-radius: 8px; font-family: var(--font-mono);
+            font-size: 13px; cursor: pointer; transition: 0.3s;
+        }
+        .tab-btn:hover { background: var(--bg-panel); color: var(--text-main); }
+        .tab-btn.active {
+            background: rgba(0, 240, 255, 0.1); color: var(--accent-cyan);
+            border-color: var(--accent-cyan); box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+        }
+
+        /* Ana Düzen */
+        .main-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; }
+        @media (max-width: 850px) { .main-layout { grid-template-columns: 1fr; } }
+
+        .left-col { display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Canvas Alanı */
+        .visual-container {
+            position: relative; width: 100%; height: 420px;
+            background: #050910; border-radius: 12px;
+            border: 1px solid rgba(0, 240, 255, 0.3); overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+        }
+        canvas { width: 100%; height: 100%; display: block; }
+        
+        .overlay-badge {
+            position: absolute; top: 15px; left: 15px; background: rgba(5, 9, 16, 0.9);
+            border: 1px solid var(--accent-cyan); padding: 6px 12px; border-radius: 6px;
+            font-size: 11px; color: var(--accent-cyan); font-family: var(--font-mono); z-index: 10;
+        }
+
+        /* Lejant (Harita Anahtarı) */
+        .legend-box {
+            position: absolute; top: 15px; right: 15px; background: rgba(5, 9, 16, 0.85);
+            border: 1px solid rgba(0, 240, 255, 0.2); padding: 10px; border-radius: 6px;
+            font-size: 10px; color: var(--text-main); font-family: var(--font-mono); z-index: 10;
+            display: flex; flex-direction: column; gap: 6px; backdrop-filter: blur(4px);
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+        /* Metrikler */
+        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .metric-card {
+            background: var(--bg-surface); border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 8px; padding: 12px; text-align: center;
+        }
+        .metric-label { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); display: block; margin-bottom: 5px; }
+        .metric-val { font-size: 18px; font-weight: bold; color: var(--accent-cyan); font-family: var(--font-mono); }
+
+        /* Kontrol Paneli */
+        .control-block { background: var(--bg-surface); padding: 15px; border-radius: 8px; border: 1px solid rgba(0, 240, 255, 0.2); }
+        .control-row { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; justify-content: space-between;}
+        .control-row:last-child { margin-bottom: 0; }
+        .control-label { font-size: 12px; font-family: var(--font-mono); color: var(--text-main); width: 160px; }
+        input[type="range"] { flex: 1; -webkit-appearance: none; background: #111d2b; height: 4px; border-radius: 2px; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent-cyan); cursor: pointer; }
+        .btn-action { background: var(--accent-cyan); color: #000; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; font-family: var(--font-mono); font-size: 11px; cursor: pointer; }
+        .btn-action:hover { opacity: 0.8; }
+
+        /* Sağ Kolon (Log ve Bilgi) */
+        .right-col { display: flex; flex-direction: column; gap: 15px; }
+        .fact-box {
+            background: var(--bg-surface); border-left: 3px solid var(--accent-cyan);
+            padding: 15px; border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.5; color: var(--text-main);
+        }
+        .fact-title { font-weight: bold; color: var(--accent-cyan); margin-bottom: 8px; display: block; font-family: var(--font-mono); font-size: 14px; }
+        
+        /* Canlı Terminal */
+        .terminal {
+            flex: 1; background: #02050a; border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 8px;
+            padding: 12px; font-family: var(--font-mono); font-size: 11px; overflow-y: auto; max-height: 300px;
+            display: flex; flex-direction: column; gap: 6px; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+        .terminal-header { color: var(--text-muted); border-bottom: 1px dashed var(--text-muted); padding-bottom: 5px; margin-bottom: 5px; }
+        .log-line { animation: fadeIn 0.3s ease-in; word-wrap: break-word;}
+        .log-time { color: var(--text-muted); margin-right: 5px; }
+        .log-info { color: var(--text-main); }
+        .log-warn { color: var(--accent-warning); }
+        .log-danger { color: var(--accent-danger); }
+        .log-success { color: var(--accent-teal); }
+        .report-toggle { justify-self: end; }
+        .report-panel {
+            display: none;
+            background: var(--bg-surface);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 12px;
+            line-height: 1.55;
+        }
+        .report-panel.open { display: block; }
+        .report-panel h2 { color: var(--accent-cyan); font: 700 15px var(--font-mono); margin-bottom: 8px; }
+        .report-panel p { color: var(--text-main); margin-bottom: 8px; }
+        .report-panel ul { padding-left: 18px; color: var(--text-muted); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="stars-bg"></div>
+
+    <div class="container">
+        <header>
+            <button class="btn-back" onclick="openExitModal()" aria-label="Geri" data-i18n-aria-label="seti_back">
+                <svg viewBox="0 0 24 24">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+            </button>
+            <div>
+                <h1 data-i18n="sim_seti_observatory">SETI Gözlemevi</h1>
+                <div class="subtitle" data-i18n="seti_subtitle">Etkileşimli Astrofizik ve Oyun Teorisi Simülasyonları</div>
+            </div>
+        </header>
+
+        <div class="tab-nav">
+            <button class="tab-btn active" id="btn-vonNeumann" onclick="switchModule('vonNeumann')" data-i18n="seti_tab_von">1. Von Neumann (Kolonizasyon)</button>
+            <button class="tab-btn" id="btn-darkForest" onclick="switchModule('darkForest')" data-i18n="seti_tab_dark">2. Karanlık Orman (Tehdit)</button>
+            <button class="tab-btn" id="btn-dysonSwarm" onclick="switchModule('dysonSwarm')" data-i18n="seti_tab_dyson">3. Dyson Sürüsü (Işık Eğrisi)</button>
+        </div>
+        <button class="btn-action report-toggle" id="reportToggle" type="button" data-i18n="seti_explain_open">Açıklama</button>
+        <section class="report-panel" id="reportPanel" aria-live="polite"></section>
+
+        <div class="main-layout">
+            <div class="left-col">
+                <div class="visual-container">
+                    <div class="overlay-badge" id="moduleBadge" data-i18n="seti_loading">YÜKLENİYOR...</div>
+                    <div class="legend-box" id="legendBox"></div>
+                    <canvas id="simCanvas"></canvas>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <span class="metric-label" id="m1-label" data-i18n="seti_metric_1">Metrik 1</span>
+                        <span class="metric-val" id="m1-val">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label" id="m2-label" data-i18n="seti_metric_2">Metrik 2</span>
+                        <span class="metric-val" id="m2-val">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label" id="m3-label" data-i18n="seti_metric_3">Metrik 3</span>
+                        <span class="metric-val" id="m3-val">0</span>
+                    </div>
+                </div>
+
+                <div class="control-block" id="controlPanel"></div>
+            </div>
+
+            <div class="right-col">
+                <div class="fact-box" id="factBox">
+                    <span class="fact-title" id="factTitle">Teori Başlığı</span>
+                    <span id="factDesc">Açıklama metni.</span>
+                </div>
+                
+                <div class="terminal" id="terminalLog">
+                    <div class="terminal-header" data-i18n="seti_terminal_ready">>> SİSTEM TELEMETRİ GÜNLÜĞÜ BAŞLATILDI...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Popup -->
+    <div class="modal-overlay" id="exitModal">
+        <div class="modal-box">
+            <div class="modal-title" data-i18n="seti_modal_title">Ana Ekrana Dön</div>
+            <div class="modal-desc" data-i18n="seti_modal_desc">Ana ekrana dönmek istediğinize emin misiniz?</div>
+            <div class="modal-actions">
+                <button class="btn-modal btn-cancel" onclick="closeExitModal()" data-i18n="seti_cancel">İptal</button>
+                <button class="btn-modal btn-confirm" onclick="confirmExit()" data-i18n="seti_confirm">Evet</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="lang.js"></script>
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        let activeModule = 'vonNeumann';
+        let animationFrameId = null;
+        const reportToggle = document.getElementById('reportToggle');
+        const reportPanel = document.getElementById('reportPanel');
+
+        function setiText(key, values = {}) {
+            return Object.entries(values).reduce((text, [name, value]) => text.replaceAll(`{${name}}`, value), t(key));
+        }
+
+        const scientificReports = {
+            vonNeumann: {
+                title: 'seti_report_von_title', summary: 'seti_report_von_summary', explanation: 'seti_report_von_explanation', note: 'seti_report_von_note', assumptions: []
+            },
+            darkForest: {
+                title: 'seti_report_dark_title', summary: 'seti_report_dark_summary', explanation: 'seti_report_dark_explanation', note: 'seti_report_dark_note', assumptions: []
+            },
+            dysonSwarm: {
+                title: 'seti_report_dyson_title', summary: 'seti_report_dyson_summary', explanation: 'seti_report_dyson_explanation', note: 'seti_report_dyson_note', assumptions: []
+            }
+        };
+
+        function updateScientificReport() {
+            const report = scientificReports[activeModule];
+            reportPanel.innerHTML = `<h2>${t(report.title)}</h2><p>${t(report.summary)}</p><p>${t(report.explanation)}</p><p>${t(report.note)}</p>`;
+        }
+
+        reportToggle.addEventListener('click', () => {
+            const isOpen = reportPanel.classList.toggle('open');
+            reportToggle.innerText = isOpen ? t('seti_explain_close') : t('seti_explain_open');
+        });
+
+        window.onLanguageChange = function() {
+            const isReportOpen = reportPanel.classList.contains('open');
+            reportToggle.innerText = isReportOpen ? t('seti_explain_close') : t('seti_explain_open');
+            switchModule(activeModule);
+        };
+
+        // Delta Time
+        let lastTime = performance.now();
+        let dt = 1;
+
+        function openExitModal() {
+            document.getElementById('exitModal').classList.add('active');
+        }
+
+        function closeExitModal() {
+            document.getElementById('exitModal').classList.remove('active');
+        }
+
+        function confirmExit() {
+            window.location.href = 'index.html';
+        }
+
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.resetTransform();
+            ctx.scale(dpr, dpr);
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function logEvent(msg, type = 'info') {
+            const terminal = document.getElementById('terminalLog');
+            const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
+            const logHTML = `<div class="log-line"><span class="log-time">[${time}]</span><span class="log-${type}"> ${msg}</span></div>`;
+            terminal.insertAdjacentHTML('beforeend', logHTML);
+            terminal.scrollTop = terminal.scrollHeight;
+            if(terminal.childElementCount > 30) {
+                terminal.removeChild(terminal.children[1]);
+            }
+        }
+
+        function formatPercent(value) {
+            if (value === 0) return '0.00';
+            if (value < 0.01) return value.toExponential(2);
+            return value.toFixed(2);
+        }
+
+        // --- VERİ MODELİ ---
+        const stars = [];
+        const nearbyStarCatalog = [
+            { name: 'Sol', distanceLy: 0, angle: 0 },
+            { name: 'Proxima Centauri', distanceLy: 4.24, angle: 0.8 },
+            { name: 'Alpha Centauri', distanceLy: 4.37, angle: 0.82 },
+            { name: 'Barnard Star', distanceLy: 5.96, angle: 2.1 },
+            { name: 'Wolf 359', distanceLy: 7.86, angle: 3.0 },
+            { name: 'Sirius', distanceLy: 8.60, angle: 4.2 },
+            { name: 'Epsilon Eridani', distanceLy: 10.50, angle: 5.1 },
+            { name: 'Tau Ceti', distanceLy: 11.90, angle: 1.5 },
+            { name: 'TRAPPIST-1', distanceLy: 39.60, angle: 2.8 },
+            { name: 'Kepler-186', distanceLy: 492, angle: 4.8 }
+        ];
+        let probeSpeed = 0.03;
+        let expandingRings = []; 
+        let simulationYears = 0;
+        let probesProduced = 0;
+        const COLONY_REPLICATION_YEARS = 50;
+        const SIMULATION_YEARS_PER_SECOND = 10;
+        const GALACTIC_RADIUS_LIGHT_YEARS = 200;
+        const PROBE_RANGE_LIGHT_YEARS = 70;
+        
+        const civs = [];
+        let activeSignals = [];
+        let activeStrikes = [];
+        let paranoiaLevel = 0.7;
+        let radarAngle = 0;
+        let transmitterPower = 1e17;
+        let signalBandwidth = 100;
+        let receiverTemperature = 20;
+        const SIGNAL_FREQUENCY_HZ = 1.42e9;
+        const RECEIVER_AREA_M2 = 1000;
+        const BOLTZMANN_CONSTANT = 1.380649e-23;
+        const LIGHT_YEAR_METERS = 9.460730472e15;
+        const DETECTION_SNR_THRESHOLD = 10;
+
+        let dysonDensity = 300;
+        let dysonSwarm = [];
+        let lightCurveHistory = [];
+        let timeGraph = 0;
+        let dysonYears = 0;
+        const STAR_MASS_SOLAR = 1;
+        const STAR_RADIUS_METERS = 6.957e8;
+        const PANEL_AREA_M2 = 1e14;
+        const ASTRONOMICAL_UNIT_METERS = 1.496e11;
+
+        function initVonNeumann() {
+            stars.length = 0; expandingRings = []; probesProduced = 0; simulationYears = 0;
+            const w = canvas.offsetWidth; const h = canvas.offsetHeight;
+            const scale = (Math.min(w,h)/2 - 20) / GALACTIC_RADIUS_LIGHT_YEARS;
+            nearbyStarCatalog.forEach(star => {
+                if(star.distanceLy <= GALACTIC_RADIUS_LIGHT_YEARS) {
+                    const dist = star.distanceLy * scale;
+                    stars.push({ name: star.name, x: w/2 + Math.cos(star.angle)*dist, y: h/2 + Math.sin(star.angle)*dist, distanceLy: star.distanceLy, colonized: false, scheduledAt: null });
+                }
+            });
+            for(let i=0; i<180; i++) {
+                let angle = Math.random() * Math.PI * 2;
+                let distanceLy = Math.sqrt(Math.random()) * GALACTIC_RADIUS_LIGHT_YEARS;
+                let dist = distanceLy * scale;
+                stars.push({ x: w/2 + Math.cos(angle)*dist, y: h/2 + Math.sin(angle)*dist, distanceLy, colonized: false, scheduledAt: null });
+            }
+            if(stars.length > 0) {
+                stars[0].colonized = true; stars[0].distanceLy = 0; stars[0].x = w/2; stars[0].y = h/2;
+                probesProduced = 1;
+                logEvent(t('seti_origin_probe'), "success");
+            }
+        }
+
+        function initDarkForest() {
+            civs.length = 0; activeSignals = []; activeStrikes = []; radarAngle = 0;
+            simulationYears = 0;
+            const w = canvas.offsetWidth || 800; const h = canvas.offsetHeight || 380;
+            for(let i=0; i<35; i++) {
+                civs.push({ id: i, x: 30 + Math.random()*(w-60), y: 30 + Math.random()*(h-60), status: 'stealth' });
+            }
+            logEvent(t('seti_forest_loaded'), "info");
+        }
+
+        function initDysonSwarm() {
+            dysonSwarm = []; lightCurveHistory = []; timeGraph = 0; dysonYears = 0;
+            for(let i=0; i<dysonDensity; i++) {
+                dysonSwarm.push({
+                    aAu: 0.5 + Math.random() * 2, 
+                    angle: Math.random() * Math.PI * 2,
+                    tilt: (Math.random() - 0.5) * 0.5,
+                    size: Math.random() * 2.5 + 1.5
+                });
+            }
+            logEvent(setiText('seti_collectors_placed', { count: dysonDensity }), "info");
+        }
+
+        window.triggerRandomBroadcast = function() {
+            const stealthCivs = civs.filter(c => c.status === 'stealth');
+            if(stealthCivs.length > 0) {
+                const target = stealthCivs[Math.floor(Math.random() * stealthCivs.length)];
+                target.status = 'broadcasting';
+                activeSignals.push({ x: target.x, y: target.y, radius: 0, originId: target.id, detectedTargets: new Set() });
+                logEvent(setiText('seti_warning_unauthorized_signal', { x: Math.floor(target.x), y: Math.floor(target.y) }), "warn");
+            } else {
+                logEvent(t('seti_no_broadcast'), "info");
+            }
+        };
+
+        window.updateDysonDensity = function(val) {
+            dysonDensity = parseInt(val);
+            initDysonSwarm();
+        };
+
+        window.switchModule = function(mod) {
+            activeModule = mod;
+            
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const activeBtn = document.getElementById('btn-' + mod);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            const badge = document.getElementById('moduleBadge');
+            const panel = document.getElementById('controlPanel');
+            const legend = document.getElementById('legendBox');
+            legend.style.top = '15px';
+            legend.style.right = '15px';
+            legend.style.left = 'auto';
+            updateScientificReport();
+            
+            document.getElementById('terminalLog').innerHTML = `<div class="terminal-header">${t('seti_terminal_ready')}</div>`;
+
+            if (mod === 'vonNeumann') {
+                badge.innerText = t('seti_von_badge');
+                document.getElementById('m1-label').innerText = t('seti_von_m1');
+                document.getElementById('m2-label').innerText = t('seti_von_m2');
+                document.getElementById('m3-label').innerText = t('seti_elapsed');
+                
+                legend.innerHTML = `
+                    <div class="legend-item"><div class="dot" style="background:#3a5068"></div> ${t('seti_raw_star')}</div>
+                    <div class="legend-item"><div class="dot" style="background:#00f0ff; box-shadow:0 0 5px #00f0ff"></div> ${t('seti_colonized')}</div>
+                    <div class="legend-item"><div style="width:15px; height:2px; background:rgba(0, 240, 255, 0.5)"></div> ${t('seti_probe_network')}</div>
+                `;
+
+                panel.innerHTML = `
+                    <div class="control-row">
+                        <span class="control-label">${t('seti_probe_speed')}</span>
+                        <input type="range" min="0.01" max="0.1" step="0.005" value="${probeSpeed}" oninput="probeSpeed=parseFloat(this.value)">
+                    </div>
+                    <div class="control-row" style="justify-content:flex-start">
+                        <button class="btn-action" onclick="initVonNeumann()">${t('seti_restart')}</button>
+                    </div>
+                `;
+                document.getElementById('factTitle').innerText = t('seti_von_fact_title');
+                document.getElementById('factDesc').innerText = t('seti_von_fact_desc');
+                initVonNeumann();
+                
+            } else if (mod === 'darkForest') {
+                badge.innerText = t('seti_dark_badge');
+                document.getElementById('m1-label').innerText = t('seti_dark_m1');
+                document.getElementById('m2-label').innerText = t('seti_destroyed');
+                document.getElementById('m3-label').innerText = t('seti_response');
+                
+                legend.innerHTML = `
+                    <div class="legend-item"><div class="dot" style="background:#00e5b8"></div> ${t('seti_hidden')}</div>
+                    <div class="legend-item"><div class="dot" style="background:#f1c40f"></div> ${t('seti_broadcasting')}</div>
+                    <div class="legend-item"><div class="dot" style="background:#ff3366"></div> ${t('seti_dead')}</div>
+                    <div class="legend-item"><div style="width:15px; height:2px; background:#ff3366"></div> ${t('seti_weapon')}</div>
+                `;
+
+                panel.innerHTML = `
+                    <div class="control-row">
+                        <span class="control-label">${t('seti_response_label')}</span>
+                        <input type="range" min="0.1" max="1.0" step="0.05" value="${paranoiaLevel}" oninput="paranoiaLevel=parseFloat(this.value)">
+                    </div>
+                    <div class="control-row">
+                        <span class="control-label">${t('seti_transmitter')}</span>
+                        <input type="range" min="1000" max="1000000" step="1000" value="${transmitterPower / 1e12}" oninput="transmitterPower=parseFloat(this.value)*1e12">
+                    </div>
+                    <div class="control-row">
+                        <span class="control-label">${t('seti_bandwidth')}</span>
+                        <input type="range" min="1" max="10000" step="1" value="${signalBandwidth}" oninput="signalBandwidth=parseFloat(this.value)">
+                    </div>
+                    <div class="control-row">
+                        <span class="control-label">${t('seti_temperature')}</span>
+                        <input type="range" min="5" max="300" step="5" value="${receiverTemperature}" oninput="receiverTemperature=parseFloat(this.value)">
+                    </div>
+                    <div class="control-row" style="justify-content:flex-start; gap:10px;">
+                        <button class="btn-action" onclick="window.triggerRandomBroadcast()">${t('seti_meti')}</button>
+                        <button class="btn-action" style="background:var(--bg-panel); color:var(--text-main);" onclick="initDarkForest()">${t('seti_reset_universe')}</button>
+                    </div>
+                `;
+                document.getElementById('factTitle').innerText = t('seti_dark_fact_title');
+                document.getElementById('factDesc').innerText = t('seti_dark_fact_desc');
+                initDarkForest();
+                
+            } else if (mod === 'dysonSwarm') {
+                badge.innerText = t('seti_dyson_badge');
+                document.getElementById('m1-label').innerText = t('seti_obscuration');
+                document.getElementById('m2-label').innerText = t('seti_ir');
+                document.getElementById('m3-label').innerText = t('seti_density');
+                legend.style.top = '58px';
+                legend.style.right = 'auto';
+                legend.style.left = '15px';
+                
+                legend.innerHTML = `
+                    <div class="legend-item"><div class="dot" style="background:#fff4ea; box-shadow:0 0 5px #ffaa44"></div> ${t('seti_main_star')}</div>
+                    <div class="legend-item"><div class="dot" style="background:#00f0ff"></div> ${t('seti_solar_swarm')}</div>
+                    <div class="legend-item"><div style="width:15px; height:2px; background:#00e5b8"></div> ${t('seti_spectrometer')}</div>
+                `;
+
+                panel.innerHTML = `
+                    <div class="control-row">
+                        <span class="control-label">${t('seti_swarm_count')}</span>
+                        <input type="range" min="50" max="800" step="50" value="${dysonDensity}" oninput="window.updateDysonDensity(this.value)">
+                    </div>
+                `;
+                document.getElementById('factTitle').innerText = t('seti_dyson_fact_title');
+                document.getElementById('factDesc').innerText = t('seti_dyson_fact_desc');
+                initDysonSwarm();
+            }
+        };
+
+        // --- ANA RENDER DÖNGÜSÜ ---
+        function render(now = performance.now()) {
+            dt = Math.min((now - lastTime) / (1000 / 60), 2.5);
+            lastTime = now;
+
+            const w = canvas.offsetWidth;
+            const h = canvas.offsetHeight;
+            
+            if (w === 0 || h === 0) {
+                animationFrameId = requestAnimationFrame(render);
+                return;
+            }
+            
+            ctx.fillStyle = '#050910';
+            ctx.fillRect(0, 0, w, h);
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for(let x=0; x<w; x+=40) { ctx.moveTo(x,0); ctx.lineTo(x,h); }
+            for(let y=0; y<h; y+=40) { ctx.moveTo(0,y); ctx.lineTo(w,y); }
+            ctx.stroke();
+
+            if (activeModule === 'vonNeumann') {
+                simulationYears += (dt / 60) * SIMULATION_YEARS_PER_SECOND;
+                let colonizedCount = 0;
+                let newColoniesThisFrame = 0;
+
+                for(let i=expandingRings.length-1; i>=0; i--) {
+                    let r = expandingRings[i];
+                    r.radius += 0.5 * dt; 
+                    r.alpha -= 0.02 * dt;
+                    if(r.alpha <= 0) { expandingRings.splice(i,1); continue; }
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, r.radius, 0, Math.PI*2);
+                    ctx.strokeStyle = `rgba(0, 240, 255, ${r.alpha})`;
+                    ctx.stroke();
+                }
+
+                for(let i=0; i<stars.length; i++) {
+                    let s = stars[i];
+                    if(s.colonized) {
+                        colonizedCount++;
+                        for(let j=0; j<stars.length; j++) {
+                            let target = stars[j];
+                            if(!target.colonized && target.scheduledAt === null) {
+                                let dx = target.x - s.x; let dy = target.y - s.y;
+                                let dist = Math.sqrt(dx*dx + dy*dy);
+                                const distanceLy = dist / ((Math.min(w, h) / 2 - 20) / GALACTIC_RADIUS_LIGHT_YEARS);
+                                if(distanceLy < PROBE_RANGE_LIGHT_YEARS) {
+                                    target.scheduledAt = simulationYears + distanceLy / probeSpeed + COLONY_REPLICATION_YEARS;
+                                    probesProduced++;
+                                }
+                            }
+                        }
+                    }
+
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.colonized ? 3 : 1.5, 0, Math.PI*2);
+                    ctx.fillStyle = s.colonized ? '#00f0ff' : '#3a5068';
+                    if(s.colonized) { ctx.shadowColor = '#00f0ff'; ctx.shadowBlur = 6; }
+                    ctx.fill(); ctx.shadowBlur = 0;
+                }
+
+                stars.forEach(target => {
+                    if(!target.colonized && target.scheduledAt !== null && target.scheduledAt <= simulationYears) {
+                        target.colonized = true;
+                        newColoniesThisFrame++;
+                        expandingRings.push({x: target.x, y: target.y, radius: 1, alpha: 1});
+                    }
+                });
+
+                if(newColoniesThisFrame > 0 && Math.random() > 0.8) {
+                    logEvent(t('seti_new_system'), "info");
+                }
+
+                document.getElementById('m1-val').innerText = colonizedCount + ' / ' + stars.length;
+                document.getElementById('m2-val').innerText = probesProduced;
+                document.getElementById('m3-val').innerText = simulationYears.toFixed(0) + ' ' + t('seti_unit_year');
+
+            } else if (activeModule === 'darkForest') {
+                const simulationDeltaYears = (dt / 60) * SIMULATION_YEARS_PER_SECOND;
+                simulationYears += simulationDeltaYears;
+                radarAngle += 0.01 * dt;
+                ctx.beginPath();
+                ctx.moveTo(w/2, h/2);
+                ctx.arc(w/2, h/2, w, radarAngle, radarAngle + 0.1);
+                ctx.fillStyle = 'rgba(0, 229, 184, 0.05)';
+                ctx.fill();
+
+                civs.forEach(c => {
+                    ctx.beginPath();
+                    ctx.arc(c.x, c.y, c.status === 'destroyed' ? 2 : 4, 0, Math.PI*2);
+                    if(c.status === 'stealth') { ctx.fillStyle = '#00e5b8'; ctx.shadowColor = '#00e5b8'; ctx.shadowBlur = 5; }
+                    else if(c.status === 'broadcasting') { ctx.fillStyle = '#f1c40f'; ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = 10; }
+                    else { ctx.fillStyle = '#ff3366'; ctx.shadowBlur = 0; }
+                    ctx.fill(); ctx.shadowBlur = 0;
+                    
+                    if(c.status !== 'destroyed' && Math.random() > 0.99) {
+                        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                        ctx.font = '9px Consolas';
+                        ctx.fillText(`CIV-${c.id}`, c.x+6, c.y-6);
+                    }
+                });
+
+                // Sinyal yayılımı, animasyon ölçeği üzerinden ışık hızına bağlıdır.
+                const lightSpeedPxPerYear = Math.hypot(w, h) / GALACTIC_RADIUS_LIGHT_YEARS;
+                const signalSpeed = lightSpeedPxPerYear * simulationDeltaYears;
+                for(let i = activeSignals.length - 1; i >= 0; i--) {
+                    let sig = activeSignals[i];
+                    sig.radius += signalSpeed;
+
+                    ctx.beginPath();
+                    ctx.arc(sig.x, sig.y, sig.radius, 0, Math.PI*2);
+                    ctx.strokeStyle = `rgba(241, 196, 15, ${Math.max(0, 1 - sig.radius/(w*0.8))})`;
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    civs.forEach(other => {
+                        if(other.id !== sig.originId && other.status === 'stealth') {
+                            let dist = Math.hypot(other.x - sig.x, other.y - sig.y);
+                            if(!sig.detectedTargets.has(other.id) && Math.abs(dist - sig.radius) < (2 * dt)) {
+                                sig.detectedTargets.add(other.id);
+                                const distanceLy = Math.max(0.1, (dist / Math.hypot(w, h)) * GALACTIC_RADIUS_LIGHT_YEARS);
+                                const distanceMeters = distanceLy * LIGHT_YEAR_METERS;
+                                const receivedPower = transmitterPower * RECEIVER_AREA_M2 / (4 * Math.PI * distanceMeters * distanceMeters);
+                                const noisePower = BOLTZMANN_CONSTANT * receiverTemperature * signalBandwidth;
+                                const signalToNoiseRatio = receivedPower / noisePower;
+                                logEvent(setiText('seti_signal_detected', { id: other.id, distance: distanceLy.toFixed(1), snr: signalToNoiseRatio.toExponential(2) }), signalToNoiseRatio >= DETECTION_SNR_THRESHOLD ? "success" : "warn");
+                                if(signalToNoiseRatio >= DETECTION_SNR_THRESHOLD && Math.random() < paranoiaLevel) {
+                                    activeStrikes.push({ 
+                                        sx: other.x, 
+                                        sy: other.y, 
+                                        tx: sig.x, 
+                                        ty: sig.y, 
+                                        totalDist: dist,
+                                        traveled: 0,
+                                        targetId: sig.originId 
+                                    });
+                                    logEvent(setiText('seti_threat_detected', { source: other.id, target: sig.originId }), "danger");
+                                }
+                            }
+                        }
+                    });
+                    if(sig.radius > Math.hypot(w, h)) activeSignals.splice(i, 1);
+                }
+
+                // Mermi, ışık sinyalinden daha yavaş ilerler: v = 0.97c.
+                const strikeSpeed = lightSpeedPxPerYear * 0.97 * simulationDeltaYears;
+                for(let i = activeStrikes.length - 1; i >= 0; i--) {
+                    let str = activeStrikes[i];
+                    str.traveled += strikeSpeed;
+                    let progress = Math.min(1, str.traveled / (str.totalDist || 1));
+                    
+                    let currX = str.sx + (str.tx - str.sx) * progress;
+                    let currY = str.sy + (str.ty - str.sy) * progress;
+
+                    ctx.beginPath(); ctx.moveTo(str.sx, str.sy); ctx.lineTo(str.tx, str.ty);
+                    ctx.strokeStyle = 'rgba(255, 51, 102, 0.1)'; ctx.stroke();
+
+                    ctx.beginPath(); ctx.moveTo(str.sx, str.sy); ctx.lineTo(currX, currY);
+                    ctx.strokeStyle = '#ff3366'; ctx.lineWidth = 2; ctx.stroke();
+
+                    if(progress >= 1) {
+                        let targetCiv = civs.find(c => c.id === str.targetId);
+                        if(targetCiv && targetCiv.status !== 'destroyed') {
+                            targetCiv.status = 'destroyed';
+                            logEvent(setiText('seti_civ_destroyed', { id: targetCiv.id }), "danger");
+                            
+                            ctx.beginPath(); ctx.arc(str.tx, str.ty, 15, 0, Math.PI*2);
+                            ctx.fillStyle = 'rgba(255, 51, 102, 0.5)'; ctx.fill();
+                        }
+                        activeStrikes.splice(i, 1);
+                    }
+                }
+
+                let alive = civs.filter(c => c.status !== 'destroyed').length;
+                let destroyed = civs.filter(c => c.status === 'destroyed').length;
+                document.getElementById('m1-val').innerText = alive;
+                document.getElementById('m2-val').innerText = destroyed;
+                document.getElementById('m3-val').innerText = '%' + (paranoiaLevel * 100).toFixed(0);
+
+            } else if (activeModule === 'dysonSwarm') {
+                const dysonDeltaYears = (dt / 60) * SIMULATION_YEARS_PER_SECOND;
+                dysonYears += dysonDeltaYears;
+                const cx = w * 0.3; const cy = h / 2;
+
+                ctx.beginPath();
+                ctx.arc(cx, cy, 40, 0, Math.PI*2);
+                ctx.fillStyle = '#fff4ea';
+                ctx.shadowColor = '#ffaa44'; ctx.shadowBlur = 30;
+                ctx.fill(); ctx.shadowBlur = 0;
+                
+                ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '10px Consolas';
+                // DÜZELTME: Tabby Yıldızı Teorisi olduğu için etiket düzeltildi.
+                ctx.fillText(t('seti_star_label'), cx - 85, cy - 60);
+
+                let blockedLight = 0;
+                let absorbedLight = 0;
+                dysonSwarm.forEach(p => {
+                    const orbitalPeriodYears = Math.sqrt(Math.pow(p.aAu, 3) / STAR_MASS_SOLAR);
+                    p.angle += (2 * Math.PI / orbitalPeriodYears) * dysonDeltaYears;
+                    const orbitRadius = 35 + p.aAu * 32;
+                    let px = cx + Math.cos(p.angle) * orbitRadius;
+                    let py = cy + Math.sin(p.angle) * (orbitRadius * 0.25) + Math.sin(p.angle)*p.tilt*25;
+
+                    let isFront = Math.sin(p.angle) > 0;
+                    
+                    if(Math.abs(py - cy) < 40 + p.size && isFront) {
+                        blockedLight += (PANEL_AREA_M2 / (Math.PI * STAR_RADIUS_METERS * STAR_RADIUS_METERS)) * 100;
+                    }
+                    const orbitalRadiusMeters = p.aAu * ASTRONOMICAL_UNIT_METERS;
+                    absorbedLight += PANEL_AREA_M2 / (4 * Math.PI * orbitalRadiusMeters * orbitalRadiusMeters);
+
+                    ctx.beginPath(); ctx.arc(px, py, p.size, 0, Math.PI*2);
+                    ctx.fillStyle = isFront ? '#00f0ff' : '#005577';
+                    ctx.fill();
+                });
+
+                let graphX = w * 0.6; let graphY = 50;
+                let graphW = w * 0.35; let graphH = h - 100;
+
+                ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)'; ctx.lineWidth = 1;
+                ctx.strokeRect(graphX, graphY, graphW, graphH);
+                
+                ctx.fillStyle = '#5e7a96'; ctx.font = '10px Consolas';
+                ctx.fillText(t('seti_flux'), graphX, graphY - 10);
+                ctx.fillText(t('seti_time_days'), graphX + graphW - 60, graphY + graphH + 15);
+                
+                ctx.beginPath(); ctx.moveTo(graphX, graphY + graphH*0.1); ctx.lineTo(graphX+graphW, graphY + graphH*0.1);
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+
+                blockedLight = Math.min(blockedLight, 100);
+                let currentFlux = 100 - blockedLight;
+                lightCurveHistory.push(currentFlux);
+                if(lightCurveHistory.length > graphW) lightCurveHistory.shift();
+
+                ctx.beginPath(); ctx.strokeStyle = '#00e5b8'; ctx.lineWidth = 2;
+                for(let i=0; i<lightCurveHistory.length; i++) {
+                    let val = lightCurveHistory[i];
+                    let plotY = graphY + graphH - ((val - 20) / 80) * graphH;
+                    if(i===0) ctx.moveTo(graphX + i, plotY);
+                    else ctx.lineTo(graphX + i, plotY);
+                }
+                ctx.stroke();
+
+                if(Math.floor(timeGraph) % 60 === 0 && blockedLight > 5) {
+                    logEvent(setiText('seti_transit', { drop: blockedLight.toFixed(1) }), blockedLight > 20 ? "warn" : "info");
+                }
+                timeGraph += dt;
+
+                document.getElementById('m1-val').innerText = blockedLight.toFixed(2) + ' %';
+                let irEmission = Math.min(absorbedLight * 100, 100);
+                document.getElementById('m2-val').innerText = formatPercent(irEmission) + ' %';
+                document.getElementById('m3-val').innerText = dysonSwarm.length;
+            }
+
+            animationFrameId = requestAnimationFrame(render);
+        }
+
+        window.switchModule('vonNeumann');
+        updateScientificReport();
+        animationFrameId = requestAnimationFrame(render);
+    </script>
+</body>
+</html>
